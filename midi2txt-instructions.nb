@@ -1,0 +1,152 @@
+(* Content-type: application/vnd.wolfram.mathematica *)
+
+(*** Wolfram Notebook File ***)
+(* http://www.wolfram.com/nb *)
+
+(* CreatedBy='Mathematica 14.0' *)
+
+(*CacheID: 234*)
+(* Internal cache information:
+NotebookFileLineBreakTest
+NotebookFileLineBreakTest
+NotebookDataPosition[       158,          7]
+NotebookDataLength[      5183,        144]
+NotebookOptionsPosition[      3923,        120]
+NotebookOutlinePosition[      4320,        136]
+CellTagsIndexPosition[      4277,        133]
+WindowFrame->Normal*)
+
+(* Beginning of Notebook Content *)
+Notebook[{
+Cell["\<\
+midi2txt instructions
+
+This is how you can run midi2txtV2.py, i might call it midi2txt.py in the \
+future if that end ups becoming the definite version.\
+\>", "Text",
+ CellChangeTimes->{{3.949157527211342*^9, 3.9491575494921417`*^9}, {
+  3.949157581918947*^9, 
+  3.949157615683098*^9}},ExpressionUUID->"15a3ef20-75ca-49de-8e80-\
+f11a04149184"],
+
+Cell["\<\
+
+midi2txtV2.py must be ran on the terminal.\
+\>", "Text",
+ CellChangeTimes->{{3.949157618977631*^9, 
+  3.949157640966976*^9}},ExpressionUUID->"015139d4-82ec-4b88-bc5a-\
+9f0caff657c2"],
+
+Cell["\<\
+1. Users must have python installed.
+2. User must have the script installed.
+3. Users must open the terminal in the folder where the script is located.
+4. This is how you run the code:\
+\>", "Text",
+ CellChangeTimes->{{3.949157654929967*^9, 3.949157759181327*^9}, {
+  3.949157799085678*^9, 
+  3.949157827559267*^9}},ExpressionUUID->"c8bfee2b-051a-4835-ab1a-\
+8b6edfd49e29"],
+
+Cell[BoxData[
+ RowBox[{
+  RowBox[{"python3", " ", 
+   RowBox[{"midi2txtV2", ".", "py"}], " ", "chosen"}], "-", "midi", "-", 
+  RowBox[{
+   RowBox[{"file", ".", "mid"}], " ", "chosen"}], "-", "name", "-", "for", 
+  "-", "midi", "-", 
+  RowBox[{"file", ".", "txt", "  "}]}]], "Code",
+ CellChangeTimes->{{3.9491578316999807`*^9, 3.949157855325091*^9}, {
+  3.949157954255981*^9, 
+  3.9491579569976187`*^9}},ExpressionUUID->"2e1987bc-09d4-463e-8eab-\
+a1f4e771ceb5"],
+
+Cell["\<\
+You first call out python3, call out the script(midi2txtV2.py) call out the \
+midi file(chosen-midi-file.mid), and then name it as you \
+want(chosen-name-for-midi-file.txt).\
+\>", "Text",
+ CellChangeTimes->{{3.949157871603389*^9, 
+  3.9491579619198437`*^9}},ExpressionUUID->"6913b8da-d08d-49ea-9c61-\
+05070fcda7e7"],
+
+Cell["\<\
+The file will show up in the folder where script is located and copy and \
+paste it into Mathematica.\
+\>", "Text",
+ CellChangeTimes->{{3.949157963567091*^9, 
+  3.949158012037883*^9}},ExpressionUUID->"06aa02fe-87f3-4aaa-a3b2-\
+d9e37417b133"],
+
+Cell["* Each track is clef and the sets have the format of:", "Text",
+ CellChangeTimes->{{3.949158018649126*^9, 
+  3.949158088381792*^9}},ExpressionUUID->"f1bc1db6-06ca-414c-8d67-\
+3fae495410be"],
+
+Cell[BoxData[
+ RowBox[{"{", 
+  RowBox[{
+   RowBox[{"start", "-", "time"}], ",", "duration", ",", "note"}], 
+  "}"}]], "Code",
+ CellChangeTimes->{{3.94915809230028*^9, 
+  3.94915809874753*^9}},ExpressionUUID->"48550c50-d9cf-4cfb-af5d-\
+9b37e4c40ff9"],
+
+Cell["\<\
+Start-time is very straight forward, it just labels whenever time of a \
+specific note begins.
+Duration is the subtraction of the end-time minus the start-time.
+Note is the mid number assigned to a note.\
+\>", "Text",
+ CellChangeTimes->{{3.9491581079920263`*^9, 
+  3.949158182186427*^9}},ExpressionUUID->"08ca04a6-d85c-4a99-b44e-\
+0e9f1bd6a69d"],
+
+Cell["\<\
+You must use programs to read and create files if wanted, MuseScore4 is free \
+and easy to understand. Always export the file to midi.\
+\>", "Text",
+ CellChangeTimes->{{3.949158189455331*^9, 
+  3.94915822822675*^9}},ExpressionUUID->"fc14f9da-e84e-41f3-b8d3-\
+e1f40803e45f"],
+
+Cell["\<\
+Midi files from the web might also work, if they don\[CloseCurlyQuote]t run, \
+try opening them in MuseScore4 and export them again.\
+\>", "Text",
+ CellChangeTimes->{{3.949158232682191*^9, 
+  3.9491582805704327`*^9}},ExpressionUUID->"7f60ee35-ac81-4326-b9a1-\
+4455af1c11f0"]
+},
+WindowSize->{808, 911},
+WindowMargins->{{12, Automatic}, {Automatic, 24}},
+FrontEndVersion->"14.0 for Mac OS X ARM (64-bit) (December 12, 2023)",
+StyleDefinitions->"Default.nb",
+ExpressionUUID->"747f0f86-bd13-44e3-bfd1-b5c8a4242bae"
+]
+(* End of Notebook Content *)
+
+(* Internal cache information *)
+(*CellTagsOutline
+CellTagsIndex->{}
+*)
+(*CellTagsIndex
+CellTagsIndex->{}
+*)
+(*NotebookFileOutline
+Notebook[{
+Cell[558, 20, 353, 9, 104, "Text",ExpressionUUID->"15a3ef20-75ca-49de-8e80-f11a04149184"],
+Cell[914, 31, 193, 6, 58, "Text",ExpressionUUID->"015139d4-82ec-4b88-bc5a-9f0caff657c2"],
+Cell[1110, 39, 383, 9, 104, "Text",ExpressionUUID->"c8bfee2b-051a-4835-ab1a-8b6edfd49e29"],
+Cell[1496, 50, 460, 11, 52, "Code",ExpressionUUID->"2e1987bc-09d4-463e-8eab-a1f4e771ceb5"],
+Cell[1959, 63, 325, 7, 58, "Text",ExpressionUUID->"6913b8da-d08d-49ea-9c61-05070fcda7e7"],
+Cell[2287, 72, 251, 6, 35, "Text",ExpressionUUID->"06aa02fe-87f3-4aaa-a3b2-d9e37417b133"],
+Cell[2541, 80, 195, 3, 35, "Text",ExpressionUUID->"f1bc1db6-06ca-414c-8d67-3fae495410be"],
+Cell[2739, 85, 249, 7, 52, "Code",ExpressionUUID->"48550c50-d9cf-4cfb-af5d-9b37e4c40ff9"],
+Cell[2991, 94, 355, 8, 81, "Text",ExpressionUUID->"08ca04a6-d85c-4a99-b44e-0e9f1bd6a69d"],
+Cell[3349, 104, 283, 6, 58, "Text",ExpressionUUID->"fc14f9da-e84e-41f3-b8d3-e1f40803e45f"],
+Cell[3635, 112, 284, 6, 58, "Text",ExpressionUUID->"7f60ee35-ac81-4326-b9a1-4455af1c11f0"]
+}
+]
+*)
+

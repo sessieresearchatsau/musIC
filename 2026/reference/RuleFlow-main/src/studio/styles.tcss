@@ -1,0 +1,240 @@
+/* =========================================
+   GLOBAL RESET & THEME
+   ========================================= */
+* {
+    box-sizing: border-box;
+}
+
+Screen {
+    background: #1e1e1e;
+    color: #e0e0e0;
+    layers: base overlay;
+    transition: screen-blur 300ms;
+}
+
+
+/* =========================================
+   Input Modal
+   ========================================= */
+
+/* The Screen Layer (The Dimmer) */
+ModalDialog {
+    align: center middle;
+    background: rgba(0, 0, 0, 0.7);
+    overflow-x: auto;
+}
+
+/* The Dialog Box */
+#modal-dialog {
+    width: 65;
+    height: auto;
+    max-height: 90vh;  /* Ensure the modal doesn't grow off-screen if there are many inputs */
+    background: #252526;
+    border: thick #007acc;
+    padding: 0 1;
+    overflow-y: auto;
+}
+
+/* Title and Content Container */
+#modal-title {
+    width: 100%;
+    content-align: center middle;
+    text-style: bold;
+    color: #ffffff;
+    margin-bottom: 1;
+}
+
+#modal-content-container {
+    width: 100%;
+    height: auto;
+}
+
+/* Notes (Static text blocks) */
+.modal-note {
+    width: 100%;
+    margin: 1 0;
+    padding: 0 1;
+    color: #aaaaaa;
+    text-style: italic;
+}
+
+/* Buttons */
+ModalDialog Checkbox {
+    width: 100%;
+}
+
+#modal-buttons {
+    width: 100%;
+    height: 3;
+    align: right middle;
+    margin-top: 1;
+}
+
+#modal-buttons Button {
+    margin-left: 1;
+    min-width: 12;
+}
+
+
+/* =========================================
+   WELCOME SCREEN (Centered Modal)
+   ========================================= */
+WelcomeScreen {
+    align: center middle;
+    background: #1e1e1e;
+    overflow: auto auto;
+}
+
+#welcome-container {
+    width: 50%;
+    min-width: 95;
+    height: auto;
+    min-height: 25;
+    border: tab #454545;
+    background: #252526;
+    padding: 2 4;
+}
+
+#welcome-title {
+    text-style: bold;
+    color: #22a5ae;
+    margin-bottom: 2;
+    margin-top: 2;
+}
+
+#recents-list {
+    height: 10;
+    border: round #454545;
+    background: #1e1e1e;
+    background-tint: #1e1e1e;  /* So that it does not tint when focused... */
+    margin-bottom: 2;
+}
+
+#welcome-buttons {
+    align-horizontal: center;
+    height: 3;
+    margin-bottom: 1;
+}
+
+#welcome-buttons Button {
+    margin: 0 2;
+    min-width: 16;
+}
+
+
+
+
+/* =========================================
+   EDITOR SCREEN (3-Column Layout)
+   ========================================= */
+
+EditorScreen {
+        width: 100%;
+        height: 100%;
+        layout: horizontal;
+        overflow: hidden hidden;
+}
+
+/* --- LEFT SIDEBAR --- */
+#project-directory {
+    width: 1fr;
+    height: 100%;
+    border-right: solid #2b2b2b;
+    background: #181818;
+    min-width: 25;
+}
+
+/* --- MIDDLE WORKSPACE --- */
+#workspace {
+    width: 2fr;
+    height: 100%;
+    layout: vertical;
+}
+
+#workspace-toolbar {
+    height: auto;
+    padding: 1 2;
+}
+
+#select-flow {  /*The flow selector dropdown*/
+    width: 10;
+}
+
+#code-editor {
+    height: 1fr;
+    margin-bottom: 1;
+}
+
+#plugin-panel {
+    height: 1fr;
+}
+
+/* --- RIGHT MENU --- */
+#plugin-controls {
+    width: 1fr;
+    height: 100%;
+    background: #181818;
+    border-left: solid #2b2b2b;
+    min-width: 30;
+}
+
+
+/* =========================================
+   COMPONENT STYLES
+   ========================================= */
+
+Input {
+    width: 1fr;
+    background: rgba(0, 0, 0, 0);
+    border: round #7a7a7a;
+    color: #e0e0e0;
+}
+
+Input:focus {
+    border: round #007acc;
+    background-tint: #252526;
+}
+
+RichLog {
+    overflow: auto;
+}
+
+Collapsible {
+    padding-right: 1;
+    padding-bottom: 1;
+}
+
+/* =========================================
+   COMPONENT CLASSES
+   ========================================= */
+
+.full-width {
+    width: 1fr;
+}
+
+.pane-header {
+    width: 1fr;
+    background: #252526;
+    text-style: bold;
+    padding-left: 1;
+}
+
+.separator {
+    padding: 0 1;
+    color: #555555;
+}
+
+.action-btn {
+    min-width: 8;
+}
+
+.increment-btn {
+    min-width: 1;
+    background: #252526;
+}
+
+/* ---- Colors ---- */
+.gray {color: gray;}
+.green { color: #87d787; }
+.orange { color: #d7af87; }
+.red   { color: #d78787; }

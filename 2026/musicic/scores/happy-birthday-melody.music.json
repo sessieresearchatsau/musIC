@@ -1,0 +1,52 @@
+{
+  "musicic": 1,
+  "name": "Happy Birthday to You — melody",
+  "encoder": "pair",
+  "grid": 32,
+  "tempo": 120,
+  "numerator": 3,
+  "denominator": 4,
+  "key": "C",
+  "source": "2026/music sheets/happy birthday.png — treble staff, read by eye",
+  "transcription": {
+    "by": "Claude, reading the image",
+    "covers": "melody (upper staff), all 8 bars",
+    "credits": "Patty Hill / Mildred J. Hill, as printed on the page",
+    "notes": "No pickup: this arrangement puts the two opening eighths on beat 1, so every bar is a full 96 units. The left-hand chords are in the companion file happy-birthday-piano.music.json; this encoding is one line and cannot hold them. Bar 6 reads C5 B4 A4 (three quarters) — a third note where the most common version has only C B, so it is the one bar worth checking against the page.",
+    "tempo_note": "The page carries no tempo mark. 120 is a guess and affects playback only."
+  },
+  "set": [
+    [16, 67],
+    [16, 67],
+    [32, 69],
+    [32, 67],
+
+    [32, 72],
+    [64, 71],
+
+    [16, 67],
+    [16, 67],
+    [32, 69],
+    [32, 67],
+
+    [32, 74],
+    [64, 72],
+
+    [16, 67],
+    [16, 67],
+    [32, 79],
+    [32, 76],
+
+    [32, 72],
+    [32, 71],
+    [32, 69],
+
+    [16, 77],
+    [16, 77],
+    [32, 76],
+    [32, 72],
+
+    [32, 74],
+    [64, 72]
+  ]
+}

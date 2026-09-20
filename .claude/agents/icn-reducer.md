@@ -32,13 +32,21 @@ reduction. Import it or pipe JSON to it.
 ```bash
 cd .claude/agents/icn
 echo '[[1,1,2,2],[2,2],[1,5],[1,1]]' | python3 icn.py
+echo '[...]' | python3 icn.py --trace       # show each reduction pass
+echo '[...]' | python3 icn.py --wolfram     # emit Wolfram only
 echo '{"edges": [[1,2],[1,2],[1,3],[2,4]]}' | python3 icn.py      # -> EDSL, then reduce
 echo '{"triples": [[0,455,60],[1,341,67]]}' | python3 icn.py      # -> MIDI pipeline
 echo '{"items": [...], "index_origin": 0}' | python3 icn.py
 ```
 
 Key functions: `reduce_list`, `expand`, `expand_all`, `verify`, `fit`,
-`to_edsl`, `from_edsl`, `to_pitch_dur`, `normalize_ticks`, `summarize`, `pretty`.
+`to_edsl`, `from_edsl`, `to_pitch_dur`, `normalize_ticks`, `summarize`,
+`pretty`, `to_mathematica`, `trace_report`.
+
+`summarize(..., want_trace=True)` returns a `trace` showing each pass, and a
+`wolfram` field holding real `IndexedConcatenate[...]` that pastes into a
+notebook with SSSiCv102` loaded. Prefer giving the user the Wolfram form --
+the ASCII EURO rendering is for reading, not for their notebooks.
 
 Node format is documented at the top of `icn.py`. An IC always **splices** into
 its parent — concatenation of lists is a list and never adds a nesting level
@@ -99,8 +107,8 @@ wrong thing — so verify.
 - If reduction fails, say it failed and show where it stalled. The paper's own
   algorithm reduces ~70% of attempted cases (Prospects 1a). Failing to reduce is
   a normal, reportable outcome. Never manufacture a form to have an answer.
-- The tool's `compression` figure is JSON characters, a rough proxy. Judge by
-  structure too, and quote the number as what it is.
+- The tool's `compression` figure is the length of the rendered notation.
+  Quote it as what it is, and judge by structure too.
 
 ## Reporting
 
@@ -110,6 +118,13 @@ index-origin assumption. If asked to persist the result, write it next to the
 source data, not into the reference directory.
 
 ## Known gaps
+
+**Only adjacent repetition is detected.** A figure that recurs
+non-adjacently -- e.g. the `{67,24},{67,8}` pickup in Happy Birthday, at
+positions 2, 8 and 14 -- is invisible to pass 1 and will be left unreduced.
+This is a large part of the paper's missing 30%. Say so when it bites rather
+than presenting a weak reduction as the best available.
+
 
 Per the paper's own Prospects section, treatment of **strings** and **integer
 digit concatenation** is unimplemented in both directions. `icn.py` handles

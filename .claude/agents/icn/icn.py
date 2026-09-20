@@ -254,7 +254,13 @@ def _put(x, path, v):
 
 
 def _cost(nodes):
-    return len(json.dumps(nodes))
+    """Length of the rendered notation.
+
+    NOT len(json.dumps(...)): the JSON encoding charges for nested dict
+    overhead, which made a flat form beat the paper's own nested answer to
+    eq. (22).  Compression is a property of the notation, so measure that.
+    """
+    return len(pretty_all(nodes))
 
 
 def _fit_blocks(blocks, var, start, report=None):
@@ -277,12 +283,14 @@ def _fit_blocks(blocks, var, start, report=None):
 VARS = "nkjihgm"
 
 
-def reduce_list(items, depth=0, index_origin=0, report=None):
+def reduce_list(items, depth=0, index_origin=0, report=None, trace=None):
     """Reduce a list to (nested) indexed concatenations. Always lossless."""
     if depth > 4 or len(items) < 2:
         return [_lift(x) for x in items]
     var = VARS[depth % len(VARS)]
     report = [] if report is None else report
+    if trace is not None:
+        trace.append((depth, "input", [_lift(x) for x in items]))
 
     # pass 1 -- exact adjacent repetition, longest block wins
     out, i, n = [], 0, len(items)
@@ -297,7 +305,8 @@ def reduce_list(items, depth=0, index_origin=0, report=None):
                 best = (reps * p, p, reps)
         if best:
             span, p, reps = best
-            body = (reduce_list(items[i:i + p], depth + 1, index_origin, report)
+            body = (reduce_list(items[i:i + p], depth + 1, index_origin,
+                                report, trace)
                     if p > 1 else [_lift(items[i])])
             cand = {"ic": {"var": None, "start": 1, "stop": reps, "body": body}}
             if expand(cand) == items[i:i + span]:
@@ -306,6 +315,9 @@ def reduce_list(items, depth=0, index_origin=0, report=None):
                 continue
         out.append(_lift(items[i]))
         i += 1
+
+    if trace is not None and out != [_lift(x) for x in items]:
+        trace.append((depth, "pass 1: adjacent repetition", out))
 
     # pass 2 -- closed forms across equal-length blocks (paper eq.1 -> eq.2)
     best, best_sub = out, []
@@ -323,6 +335,9 @@ def reduce_list(items, depth=0, index_origin=0, report=None):
                         "stop": index_origin + len(blocks) - 1, "body": body}}]
         if verify(cand, items) and _cost(cand) < _cost(best):
             best, best_sub = cand, sub
+            if trace is not None:
+                trace.append((depth, f"pass 2: closed form, block length {p}",
+                              cand))
     if best is not out:
         report.extend(best_sub)
     return best
@@ -381,6 +396,58 @@ def restore_onsets(pairs, start=0):
 
 # --------------------------------------------------------------------------
 
+_WL_FRAC = __import__("re").compile(r"F\((-?\d+),\s*(\d+)\)")
+
+
+def _wl_expr(formula):
+    """Python formula string -> Wolfram Language."""
+    return _WL_FRAC.sub(r"(\1/\2)", formula).replace("**", "^")
+
+
+def _count(ic):
+    """Repetition count of a bare EURO, as a number or a symbolic expression.
+
+    The count may itself be a formula in an enclosing index (the toy-universe
+    trick: EURO^(i-1) is empty at i=1), so it cannot always be evaluated here.
+    """
+    start, stop = ic["start"], ic["stop"]
+    if isinstance(start, int) and isinstance(stop, int):
+        return stop - start + 1
+    if start == 1:
+        return _wl_expr(str(stop))
+    return f"{_wl_expr(str(stop))} - {_wl_expr(str(start))} + 1"
+
+
+def to_mathematica(node):
+    """Render a node as Wolfram Language using SSSiCv102`IndexedConcatenate.
+
+    Paste the result into a notebook that has already loaded the package; it
+    formats as the EURO notation and expands with Expand / ExpandAll.
+    """
+    if isinstance(node, int):
+        return str(node)
+    if isinstance(node, F):
+        return (str(node.numerator) if node.denominator == 1
+                else f"({node.numerator}/{node.denominator})")
+    if isinstance(node, str):
+        return _wl_expr(node)
+    if "list" in node:
+        return "{" + ", ".join(to_mathematica(x) for x in node["list"]) + "}"
+    if "seq" in node:
+        return "Sequence[" + ", ".join(to_mathematica(x)
+                                       for x in node["seq"]) + "]"
+    ic = node["ic"]
+    body = ", ".join(to_mathematica(x) for x in ic["body"])
+    if ic.get("var") is None:                      # Overscript[EURO, n][...]
+        return f"IndexedConcatenate[{body}, {_count(ic)}]"
+    return (f"IndexedConcatenate[{body}, "
+            f"{{{ic['var']}, {ic['start']}, {ic['stop']}}}]")
+
+
+def to_mathematica_all(nodes):
+    return "{" + ", ".join(to_mathematica(n) for n in nodes) + "}"
+
+
 def pretty(node):
     """Render close to the notebooks' notation (EURO SIGN = concatenate)."""
     if isinstance(node, (int, str, F)):
@@ -392,7 +459,8 @@ def pretty(node):
     ic = node["ic"]
     body = ", ".join(pretty(x) for x in ic["body"])
     if ic.get("var") is None:
-        return f"€^{ic['stop']}[{body}]"
+        c = _count(ic)
+        return f"€^{c}[{body}]" if str(c).isdigit() else f"€^({c})[{body}]"
     return f"€_({ic['var']}|={ic['start']})^{ic['stop']}[{body}]"
 
 
@@ -400,17 +468,32 @@ def pretty_all(nodes):
     return "{" + ", ".join(pretty(n) for n in nodes) + "}"
 
 
-def summarize(target, index_origin=0):
-    report = []
-    r = reduce_list(target, index_origin=index_origin, report=report)
+def trace_report(trace):
+    """Human-readable view of how the reduction was built, step by step."""
+    lines = []
+    for depth, label, nodes in trace:
+        pad = "  " * depth
+        tag = f"{pad}[depth {depth}] {label}"
+        lines.append(f"{tag}\n{pad}    {pretty_all(nodes)}")
+    return "\n".join(lines)
+
+
+def summarize(target, index_origin=0, want_trace=False):
+    report, trace = [], ([] if want_trace else None)
+    r = reduce_list(target, index_origin=index_origin, report=report,
+                    trace=trace)
     interp = [f for f in report if f.get("confirming", 1) == 0]
-    return {"icn": r, "pretty": pretty_all(r), "lossless": verify(r, target),
+    out = {"icn": r, "pretty": pretty_all(r),
+           "wolfram": to_mathematica_all(r), "lossless": verify(r, target),
             "compression":
                 f"{_cost([_lift(x) for x in target])} -> {_cost(r)} chars",
             "fits": report,
             "interpolating_fits": len(interp),
-            "warning": ("some closed forms interpolate exactly and predict "
-                        "nothing beyond the given data") if interp else None}
+           "warning": ("some closed forms interpolate exactly and predict "
+                       "nothing beyond the given data") if interp else None}
+    if want_trace:
+        out["trace"] = trace_report(trace)
+    return out
 
 
 if __name__ == "__main__":
@@ -428,4 +511,12 @@ if __name__ == "__main__":
             target = data["items"]
     else:
         target, origin = data, 0
-    print(json.dumps(summarize(target, origin), indent=2))
+    want_trace = "--trace" in sys.argv
+    res = summarize(target, origin, want_trace)
+    if want_trace:
+        print(res.pop("trace"))
+        print()
+    if "--wolfram" in sys.argv:
+        print(res["wolfram"])
+    else:
+        print(json.dumps(res, indent=2))

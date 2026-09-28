@@ -49,7 +49,7 @@ async function api(path, body, isForm) {
   return j;
 }
 function status(msg, bad) {
-  const n = $("#status"); n.textContent = msg || "";
+  const n = $("#status"); n.textContent = n.title = msg || "";
   n.style.color = bad ? "var(--accent)" : "var(--dim)";
 }
 function showError(where, msg) {
@@ -316,7 +316,7 @@ function drawScore(score) {
     host.append(el("div", "body sub", "nothing to draw")); return;
   }
   const VF = Vex.Flow;
-  const width = Math.max(host.clientWidth - 4, 480);
+  const width = Math.max(host.clientWidth - 4, 300);   // fits a phone
   const usable = width - 24;
   const FIRST_EXTRA = 74;          // clef + key signature + time signature
   const lineH = 118;
@@ -342,6 +342,18 @@ function drawScore(score) {
   r.resize(width, lines.length * lineH + 26);
   const ctx = r.getContext(); ctx.setFont("sans-serif", 9);
 
+  // A tied note waits here until the note it ties into has been formatted, which
+  // may be in the next bar or on the next system.
+  let pendingTie = null;
+  const tie = (first, last) => {
+    const idx = (sn) => sn && sn.getKeys().map((_, k) => k);
+    try {
+      new VF.StaveTie({ first_note: first, last_note: last,
+        first_indices: idx(first || last), last_indices: idx(last || first) })
+        .setContext(ctx).draw();
+    } catch (e) { /* a tie is decoration; never lose the bar over one */ }
+  };
+
   lines.forEach((idxs, row) => {
     // Justify: scale this line's bars so they exactly span the page.
     const extra = FIRST_EXTRA;
@@ -364,8 +376,11 @@ function drawScore(score) {
       const notes = m.notes.map((n) => {
         const sn = new VF.StaveNote({
           keys: n.keys, duration: n.code + (n.rest ? "r" : ""),
-          clef: "treble", autoStem: true,
+          clef: "treble", autoStem: true, dots: n.dots,
         });
+        // `dots` above gives the note its true length; this only draws the dot.
+        // With the glyph alone VexFlow timed a dotted quarter as a quarter,
+        // which misplaced every beam group and spacing after it in the bar.
         for (let d = 0; d < n.dots; d++) VF.Dot.buildAndAttach([sn], { all: true });
         // Only the accidentals the layout said to draw: the key signature and
         // the rest of the bar cover the others.
@@ -373,7 +388,7 @@ function drawScore(score) {
           if (a) sn.addModifier(new VF.Accidental(a), k);
         });
         sn._rows = n.rows || []; sn._label = n.label;
-        sn._code = n.code; sn._dots = n.dots;
+        sn._code = n.code; sn._dots = n.dots; sn._tie = n.tie && !n.rest;
         return sn;
       });
 
@@ -384,14 +399,30 @@ function drawScore(score) {
         voice.addTickables(notes);
         // Beam by beat, the way an engraver would: a run of sixteenths in 4/4
         // breaks into groups of four rather than one bar-long beam.
-        beams = VF.Beam.generateBeams(notes.filter((n) => !n.isRest()), {
-          groups: [new VF.Fraction(1, score.denominator)],
+        // Pass the rests too: grouping walks the bar by ticks, so dropping them
+        // shifted every later note into the wrong beat. Compound metres beam in
+        // dotted-quarter groups, three eighths to a beat.
+        const compound = score.denominator === 8 && score.numerator % 3 === 0
+          && score.numerator > 3;
+        beams = VF.Beam.generateBeams(notes, {
+          groups: [compound ? new VF.Fraction(3, 8)
+                            : new VF.Fraction(1, score.denominator)],
         });
         new VF.Formatter().joinVoices([voice]).format([voice],
           Math.max(w - (col === 0 ? extra + 16 : 18), 60));
         voice.draw(ctx, stave);
         beams.forEach((b) => b.setContext(ctx).draw());
       } catch (e) { /* one bad bar must not blank the page */ }
+
+      notes.forEach((sn) => {
+        if (pendingTie && !sn.isRest()) {
+          // A tie that wraps to a new system is drawn as two halves: one
+          // leaving the end of the old line, one arriving at the new.
+          if (pendingTie.row === row) tie(pendingTie.sn, sn);
+          else { tie(pendingTie.sn, null); tie(null, sn); }
+        }
+        pendingTie = sn._tie ? { sn, row } : null;
+      });
 
       notes.forEach((sn) => {
         const g = sn.getSVGElement && sn.getSVGElement();
@@ -412,6 +443,8 @@ function drawScore(score) {
       x += w;
     });
   });
+
+  if (pendingTie) tie(pendingTie.sn, null);   // continues onto the next page
 
   drawPager(score);
   syncSel();            // re-apply selection colours to the new noteheads

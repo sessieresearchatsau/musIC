@@ -16,11 +16,30 @@
 body{margin:0;background:var(--bg);color:var(--ink);
   font:13px/1.5 ui-sans-serif,-apple-system,"Segoe UI",system-ui,sans-serif}
 code,pre,.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
-header{display:flex;gap:10px;align-items:center;flex-wrap:wrap;
-  padding:10px 14px;background:var(--panel);border-bottom:1px solid var(--line);
+header{display:flex;gap:8px 14px;align-items:center;flex-wrap:wrap;
+  padding:9px 14px;background:var(--panel);border-bottom:1px solid var(--line);
   position:sticky;top:0;z-index:20}
-h1{font-size:14px;margin:0 10px 0 0;font-weight:650;letter-spacing:.02em}
+h1{font-size:14px;margin:0;font-weight:650;letter-spacing:.02em;white-space:nowrap}
 h1 small{font-weight:400;color:var(--dim);margin-left:6px}
+/* a toolbar group: wraps as a unit, split from its neighbour by a hairline */
+.tb{display:flex;gap:6px;align-items:center;flex-wrap:wrap;
+  padding-left:14px;border-left:1px solid var(--line)}
+.fld{display:inline-flex;gap:5px;align-items:center;white-space:nowrap}
+.fld select{max-width:190px}
+#status{flex:1 1 160px;text-align:right;min-width:0;overflow:hidden;
+  text-overflow:ellipsis;white-space:nowrap}
+button:focus-visible,select:focus-visible,.btn:focus-within,
+input:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);
+  outline-offset:1px}
+@media(max-width:760px){
+  /* a three-row sticky toolbar would eat half a phone screen */
+  header{position:static;padding:8px 12px}
+  h1 small{display:none}
+  .tb{padding-left:0;border-left:0}
+  .fld select{max-width:150px}
+  #status{flex-basis:100%;text-align:left}
+  main{padding:8px;gap:8px}
+}
 button,select,input[type=text],input[type=number]{
   font:inherit;padding:5px 9px;border:1px solid var(--line);border-radius:5px;
   background:var(--panel);color:var(--ink)}
@@ -42,6 +61,8 @@ label{color:var(--dim);font-size:12px}
 main{display:grid;grid-template-columns:1fr 400px;gap:12px;padding:12px;
   align-items:start}
 @media(max-width:1100px){main{grid-template-columns:1fr}}
+/* let wide children (the score, the tables) scroll inside, not the page */
+main>div{min-width:0}
 .panel{background:var(--panel);border:1px solid var(--line);border-radius:8px;
   overflow:hidden}
 .panel>h2{font-size:11px;text-transform:uppercase;letter-spacing:.08em;
@@ -132,29 +153,37 @@ textarea{width:100%;min-height:74px;font:12px/1.45 ui-monospace,Menlo,monospace;
 <body>
 <header>
   <h1>musIC <small>music ⇄ set workbench</small></h1>
-  <!-- A <label for> opens the picker natively. Triggering a hidden input from
-       script is silently ignored by some browsers, so no JS is involved. -->
-  <label class="btn primary" for="file">Open MIDI…</label>
-  <input type="file" id="file" class="vh"
-         accept=".mid,.midi,audio/midi,audio/x-midi">
-  <label class="btn" for="setfile">Open set…</label>
-  <input type="file" id="setfile" class="vh" accept=".json,.set,.txt,application/json">
-  <label>library <select id="library" style="max-width:210px"></select></label>
-  <label>track <select id="track"></select></label>
-  <label>voice <select id="reduction">
-    <option value="top">top line</option>
-    <option value="voice0">lowest</option>
-    <option value="full">all notes</option>
-  </select></label>
-  <label>encoding <select id="encoder"></select></label>
-  <label>grid <select id="grid">
-    <option value="32" selected>32 = quarter (notebook)</option>
-    <option value="48">48 (triplets)</option>
-    <option value="96">96 (fine)</option>
-  </select></label>
-  <button id="compose">✎ Compose</button>
-  <button id="play">▶ Play</button>
-  <button id="stop">■</button>
+  <!-- Controls are grouped so a narrow window wraps whole groups, not a
+       label away from its select. -->
+  <div class="tb">
+    <!-- A <label for> opens the picker natively. Triggering a hidden input from
+         script is silently ignored by some browsers, so no JS is involved. -->
+    <label class="btn primary" for="file">Open MIDI…</label>
+    <input type="file" id="file" class="vh"
+           accept=".mid,.midi,audio/midi,audio/x-midi">
+    <label class="btn" for="setfile">Open set…</label>
+    <input type="file" id="setfile" class="vh" accept=".json,.set,.txt,application/json">
+    <label class="fld">library <select id="library"></select></label>
+  </div>
+  <div class="tb">
+    <label class="fld">track <select id="track"></select></label>
+    <label class="fld">voice <select id="reduction">
+      <option value="top">top line</option>
+      <option value="voice0">lowest</option>
+      <option value="full">all notes</option>
+    </select></label>
+    <label class="fld">encoding <select id="encoder"></select></label>
+    <label class="fld">grid <select id="grid">
+      <option value="32" selected>32 = quarter (notebook)</option>
+      <option value="48">48 (triplets)</option>
+      <option value="96">96 (fine)</option>
+    </select></label>
+  </div>
+  <div class="tb">
+    <button id="compose">✎ Compose</button>
+    <button id="play">▶ Play</button>
+    <button id="stop" aria-label="Stop" title="Stop">■</button>
+  </div>
   <span id="status" class="sub"></span>
 </header>
 

@@ -1,7 +1,5 @@
-/* musIC — browser side. Renders notation, links it to the set, plays it back. */
-const $ = (s) => document.querySelector(s);
-const el = (t, cls, txt) => { const n = document.createElement(t);
-  if (cls) n.className = cls; if (txt != null) n.textContent = txt; return n; };
+/* musIC — the workbench. Renders notation, links it to the set, plays it back.
+   The engraver, fetch helpers and synth are in shared.js. */
 
 const S = {
   session: null, track: 0, encoders: [], view: null,
@@ -38,16 +36,6 @@ const HUES = [12, 200, 145, 275, 35, 320, 175, 95, 245, 60];
 const colorFor = (i) => `hsl(${HUES[i % HUES.length]} 62% 45%)`;
 const tintFor = (i) => `hsl(${HUES[i % HUES.length]} 70% 92%)`;
 
-/* ---------------------------------------------------------------- fetch */
-async function api(path, body, isForm) {
-  const opts = isForm ? { method: "POST", body }
-    : { method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body) };
-  const r = await fetch(path, opts);
-  const j = await r.json().catch(() => ({ error: `${r.status} ${r.statusText}` }));
-  if (j && j.error) throw new Error(j.error);
-  return j;
-}
 function status(msg, bad) {
   const n = $("#status"); n.textContent = n.title = msg || "";
   n.style.color = bad ? "var(--accent)" : "var(--dim)";
@@ -132,6 +120,15 @@ function showError(where, msg) {
     $("#saveMidi").href = `/api/export/midi?session=${S.session}&track=0`
       + `&name=${encodeURIComponent($("#pieceName").value || "piece")}`;
   };
+  // Open the Sheet on whatever is loaded here.
+  $("#toSheet").onclick = () => {
+    const q = new URLSearchParams();
+    if (S.libFile) q.set("file", S.libFile);
+    else if (S.session) { q.set("session", S.session); if (S.track) q.set("track", S.track); }
+    if (S.session) q.set("encoder", $("#encoder").value);
+    if ($("#reduction").value !== "top") q.set("reduction", $("#reduction").value);
+    $("#toSheet").href = "/sheet" + (q.toString() ? "?" + q : "");
+  };
   document.addEventListener("keydown", onKey);
   $("#play").onclick = play;
   $("#stop").onclick = stopAll;
@@ -167,7 +164,11 @@ function showError(where, msg) {
   const q = new URLSearchParams(location.search);
   if (q.get("encoder")) $("#encoder").value = q.get("encoder");
   if (q.get("grid")) $("#grid").value = q.get("grid");
-  if (q.get("ic")) { $("#icText").value = q.get("ic"); await renderIC(); }
+  if (q.get("reduction")) $("#reduction").value = q.get("reduction");
+  // ...and ?file= or ?session=, which is how the Sheet tab hands its piece back.
+  if (q.get("file")) { await loadLibrary(q.get("file")); await openFromLibrary(); }
+  else if (q.get("session")) await resumeSession(q.get("session"), +q.get("track") || 0);
+  else if (q.get("ic")) { $("#icText").value = q.get("ic"); await renderIC(); }
   else if (q.get("set")) { $("#setText").value = q.get("set"); await renderSet(); }
   else status("Open a MIDI file, pick a transcription from the library, "
               + "or build a set on the right.");
@@ -183,7 +184,7 @@ async function onFile(e) {
   fd.append("grid", $("#grid").value);
   try {
     const j = await api("/api/midi", fd, true);
-    S.session = j.session; S.track = 0; S.setfile = null;
+    S.session = j.session; S.track = 0; S.setfile = null; S.libFile = null;
     drawWarnings([]);
     const t = $("#track"); t.innerHTML = "";
     j.tracks.forEach((tr, i) => {
@@ -240,7 +241,7 @@ async function openFromLibrary() {
   status("opening " + file + "…");
   try {
     const j = await api("/api/library/open", { file });
-    adopt(j);
+    adopt(j); S.libFile = file;
     status(`${j.setfile.name}: ${j.rows.length} rows`
       + (j.warnings.length ? ` · ${j.warnings.length} to check` : ""));
   } catch (err) { status(err.message, true); showError($("#score"), err.message); }
@@ -274,6 +275,25 @@ function drawWarnings(list, sf) {
 function scrollToRow(i) {
   const n = document.querySelector(`#rows .row[data-row="${i}"]`);
   if (n) n.scrollIntoView({ block: "nearest", inline: "nearest" });
+}
+
+/* A piece the Sheet page loaded. Sessions are server memory, so a link from
+   before a restart has nothing to pick up. */
+async function resumeSession(session, track) {
+  try {
+    const j = await fetch("/api/session?session=" + encodeURIComponent(session))
+      .then((r) => r.json());
+    if (j.error) throw new Error(j.error);
+    S.session = session; S.track = Math.min(track, j.tracks.length - 1);
+    S.setfile = null; S.libFile = null;
+    const t = $("#track"); t.innerHTML = "";
+    j.tracks.forEach((tr, i) => {
+      const o = el("option", null, `${tr.name} — ${tr.notes} notes${tr.monophonic ? "" : " (poly)"}`);
+      o.value = i; t.append(o);
+    });
+    t.value = S.track;
+    await refresh();
+  } catch (err) { status(err.message, true); }
 }
 
 /* -------------------------------------------------------------- refresh */
@@ -310,141 +330,16 @@ function drawMeta(track, enc) {
 
 /* ---------------------------------------------------------------- score */
 function drawScore(score) {
-  const host = $("#score"); host.innerHTML = ""; S.noteEls = new Map();
-  S.staves = [];
-  if (!score || !score.measures.length) {
-    host.append(el("div", "body sub", "nothing to draw")); return;
-  }
-  const VF = Vex.Flow;
-  const width = Math.max(host.clientWidth - 4, 300);   // fits a phone
-  const usable = width - 24;
-  const FIRST_EXTRA = 74;          // clef + key signature + time signature
-  const lineH = 118;
-
-  // Give each bar room in proportion to what is in it, then justify each system
-  // to the full width. Packing a fixed number of bars per line is what let a
-  // dense bar collapse into a smear of overlapping noteheads.
-  const want = score.measures.map((m) => {
-    const n = m.notes.length || 1;
-    return Math.max(96, 34 + 26 * n);
-  });
-
-  const lines = [];
-  let cur = [], curW = 0;
-  score.measures.forEach((m, i) => {
-    const extra = cur.length === 0 ? FIRST_EXTRA : 0;
-    if (cur.length && curW + want[i] + extra > usable) { lines.push(cur); cur = []; curW = 0; }
-    cur.push(i); curW += want[i] + (cur.length === 1 ? FIRST_EXTRA : 0);
-  });
-  if (cur.length) lines.push(cur);
-
-  const r = new VF.Renderer(host, VF.Renderer.Backends.SVG);
-  r.resize(width, lines.length * lineH + 26);
-  const ctx = r.getContext(); ctx.setFont("sans-serif", 9);
-
-  // A tied note waits here until the note it ties into has been formatted, which
-  // may be in the next bar or on the next system.
-  let pendingTie = null;
-  const tie = (first, last) => {
-    const idx = (sn) => sn && sn.getKeys().map((_, k) => k);
-    try {
-      new VF.StaveTie({ first_note: first, last_note: last,
-        first_indices: idx(first || last), last_indices: idx(last || first) })
-        .setContext(ctx).draw();
-    } catch (e) { /* a tie is decoration; never lose the bar over one */ }
-  };
-
-  lines.forEach((idxs, row) => {
-    // Justify: scale this line's bars so they exactly span the page.
-    const extra = FIRST_EXTRA;
-    const raw = idxs.reduce((s, i) => s + want[i], 0);
-    const scale = Math.max(0.55, (usable - extra) / Math.max(raw, 1));
-    let x = 12;
-    idxs.forEach((i, col) => {
-      const m = score.measures[i];
-      const w = want[i] * scale + (col === 0 ? extra : 0);
-      const stave = new VF.Stave(x, 12 + row * lineH, w);
-      if (col === 0) {
-        stave.addClef("treble");
-        if (score.key && score.key !== "C") stave.addKeySignature(score.key);
-        if (row === 0) stave.addTimeSignature(`${score.numerator}/${score.denominator}`);
-      }
-      stave.setContext(ctx).draw();
-      S.staves.push({ x, w, top: stave.getYForLine(0),
-                      spacing: stave.getYForLine(1) - stave.getYForLine(0) });
-
-      const notes = m.notes.map((n) => {
-        const sn = new VF.StaveNote({
-          keys: n.keys, duration: n.code + (n.rest ? "r" : ""),
-          clef: "treble", autoStem: true, dots: n.dots,
-        });
-        // `dots` above gives the note its true length; this only draws the dot.
-        // With the glyph alone VexFlow timed a dotted quarter as a quarter,
-        // which misplaced every beam group and spacing after it in the bar.
-        for (let d = 0; d < n.dots; d++) VF.Dot.buildAndAttach([sn], { all: true });
-        // Only the accidentals the layout said to draw: the key signature and
-        // the rest of the bar cover the others.
-        (n.accidentals || []).forEach((a, k) => {
-          if (a) sn.addModifier(new VF.Accidental(a), k);
-        });
-        sn._rows = n.rows || []; sn._label = n.label;
-        sn._code = n.code; sn._dots = n.dots; sn._tie = n.tie && !n.rest;
-        return sn;
-      });
-
-      let beams = [];
-      try {
-        const voice = new VF.Voice({ num_beats: score.numerator,
-          beat_value: score.denominator }).setStrict(false);
-        voice.addTickables(notes);
-        // Beam by beat, the way an engraver would: a run of sixteenths in 4/4
-        // breaks into groups of four rather than one bar-long beam.
-        // Pass the rests too: grouping walks the bar by ticks, so dropping them
-        // shifted every later note into the wrong beat. Compound metres beam in
-        // dotted-quarter groups, three eighths to a beat.
-        const compound = score.denominator === 8 && score.numerator % 3 === 0
-          && score.numerator > 3;
-        beams = VF.Beam.generateBeams(notes, {
-          groups: [compound ? new VF.Fraction(3, 8)
-                            : new VF.Fraction(1, score.denominator)],
-        });
-        new VF.Formatter().joinVoices([voice]).format([voice],
-          Math.max(w - (col === 0 ? extra + 16 : 18), 60));
-        voice.draw(ctx, stave);
-        beams.forEach((b) => b.setContext(ctx).draw());
-      } catch (e) { /* one bad bar must not blank the page */ }
-
-      notes.forEach((sn) => {
-        if (pendingTie && !sn.isRest()) {
-          // A tie that wraps to a new system is drawn as two halves: one
-          // leaving the end of the old line, one arriving at the new.
-          if (pendingTie.row === row) tie(pendingTie.sn, sn);
-          else { tie(pendingTie.sn, null); tie(null, sn); }
-        }
-        pendingTie = sn._tie ? { sn, row } : null;
-      });
-
-      notes.forEach((sn) => {
-        const g = sn.getSVGElement && sn.getSVGElement();
-        if (!g || !sn._rows.length) return;
-        g.classList.add("vf-note");
-        g.dataset.rows = sn._rows.join(",");
-        for (const rw of sn._rows) {
-          if (!S.noteEls.has(rw)) S.noteEls.set(rw, []);
-          S.noteEls.get(rw).push(g);
-        }
-        g.addEventListener("mouseenter", () => hover(sn._rows[0]));
-        g.addEventListener("mouseleave", () => hover(null));
-        g.addEventListener("click", (ev) => {
-          if (S.edit.on) { ev.stopPropagation(); S.edit.sel = sn._rows[0]; markSel(); }
-          else sn._rows.forEach(toggleSel);
-        });
-      });
-      x += w;
+  const host = $("#score");
+  const out = engrave(host, score, { onNote: (g, sn) => {
+    g.addEventListener("mouseenter", () => hover(sn._rows[0]));
+    g.addEventListener("mouseleave", () => hover(null));
+    g.addEventListener("click", (ev) => {
+      if (S.edit.on) { ev.stopPropagation(); S.edit.sel = sn._rows[0]; markSel(); }
+      else sn._rows.forEach(toggleSel);
     });
-  });
-
-  if (pendingTie) tie(pendingTie.sn, null);   // continues onto the next page
+  } });
+  S.noteEls = out.noteEls; S.staves = out.staves;
 
   drawPager(score);
   syncSel();            // re-apply selection colours to the new noteheads
@@ -516,7 +411,6 @@ function noteInfo(row) {
       return `${n.label} · ${n.code}${".".repeat(n.dots)} · bar ${m.index + 1}`;
   return "";
 }
-function esc(s) { return String(s).replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c])); }
 
 function toggleSel(row) {
   if (S.sel.has(row)) S.sel.delete(row); else S.sel.add(row);
@@ -656,7 +550,7 @@ async function pushCompose(skipUndo) {
       name: $("#pieceName").value || "new piece",
       encoder: $("#encoder").value, session: S.session, page: S.page,
     });
-    S.session = j.session; S.view = j; setSpans([]);
+    S.session = j.session; S.view = j; setSpans([]); S.libFile = null;
     drawScore(j.score); drawRows(j.encoding); drawLiteral();
     drawMeta(j.track, j.encoding); drawQuant(j.track); markSel(); bench();
     status(`${S.edit.notes.length} notes · ${$("#pieceName").value}`);
@@ -778,7 +672,7 @@ async function renderIC() {
   } catch (err) { showError($("#icText").parentElement, err.message); status(err.message, true); }
 }
 function adopt(j) {
-  S.session = j.session; S.track = 0; S.view = j; S.sel.clear();
+  S.session = j.session; S.track = 0; S.view = j; S.sel.clear(); S.libFile = null;
   setSpans(j.ic ? j.ic.spans : []);
   // A set file states its own encoding, bar and tempo; adopt them, so the panel
   // shows the rows as they were written rather than re-encoded into whatever
@@ -861,29 +755,7 @@ function drawQuant(track) {
 }
 
 /* -------------------------------------------------------------- playback */
-let AC = null, playing = [];
-function ctx() { AC = AC || new (window.AudioContext || window.webkitAudioContext)(); return AC; }
-function stopAll() { playing.forEach((o) => { try { o.stop(); } catch {} }); playing = []; }
 function play() {
-  const pb = S.view && S.view.playback; if (!pb || !pb.notes.length) return;
-  stopAll();
-  const ac = ctx(), t0 = ac.currentTime + 0.06;
-  const sel = [...S.sel];
-  const notes = sel.length
-    ? pb.notes.filter((_, i) => sel.includes(i))
-    : pb.notes;
-  const base = notes.length ? notes[0].t : 0;
-  for (const n of notes) {
-    const osc = ac.createOscillator(), g = ac.createGain();
-    osc.type = "triangle";
-    osc.frequency.value = 440 * Math.pow(2, (n.p - 69) / 12);
-    const on = t0 + (n.t - base), off = on + Math.max(n.d * 0.92, 0.05);
-    g.gain.setValueAtTime(0.0001, on);
-    g.gain.exponentialRampToValueAtTime(0.22, on + 0.012);
-    g.gain.exponentialRampToValueAtTime(0.0001, off);
-    osc.connect(g).connect(ac.destination);
-    osc.start(on); osc.stop(off + 0.02);
-    playing.push(osc);
-  }
-  status(`playing ${notes.length} notes${sel.length ? " (selection)" : ""}`);
+  const n = playNotes(S.view && S.view.playback, S.sel);
+  if (n) status(`playing ${n} notes${S.sel.size ? " (selection)" : ""}`);
 }

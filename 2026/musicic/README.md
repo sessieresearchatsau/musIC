@@ -73,11 +73,20 @@ notebooks.
 
 ```
 IC(i=0..7)[{16, 60+2*i}]              rising whole-tone scale
+IC(i,0,7)[{16, 60+2*i}]               the same: variable, first, last
+IC(i=0,n=7)[{16, 60+2*i}]             the same, limits written as a sum's
+IC(i,0,2)[IC(j,i,2)[{8, 60+j}]]       a limit can use an outer index
+IC(i=0,n=3)[{16, 60+n-i}]             n is in scope: 63, 62, 61, 60
 IC(i=0..1)[{62, 24/3^i}]              the notebook's geometric duration
 IC(j=0..3)[{8, 1/6*(j^3-13*j)+81}]    Zelda's cubic -> 81, 79, 78, 79
-IC4[IC(i=1..3)[{8, 60+i}], {16, 67}]  nested
-IC0[{9,9}]                            vanishes, as the paper requires
+IC(4)[IC(i=1..3)[{8, 60+i}], {16, 67}] nested
+IC(0)[{9,9}]                          vanishes, as the paper requires
+IC(i,1,3)[IC(i)[{16, 60+i}]]          a count from an index: 1, 2, then 3 copies
 ```
+
+`IC(2)[...]` makes two copies; the count can be a formula in an enclosing index,
+`IC(n)[...]`, and `IC(0)` -- or any count that comes out 0 or less -- makes
+none. The older `IC2[...]` is read the same as `IC(2)[...]`.
 
 `IC` is an ASCII alias for `€`; both are accepted, as is `\[Euro]`. Deep-link an
 expression with `?ic=...` or a literal with `?set=...`.
@@ -94,6 +103,23 @@ that note at that pitch, click a note to select it. `↑`/`↓` move it a step
 `1`/`2`/`4`/`8` pick a duration, `⌘Z` undoes. Set the bar, tempo and name; the
 set and the score update on every edit. **Save .mid** exports a MIDI file that
 reads back as exactly the set you wrote.
+
+## Saving and exporting a notebook
+
+**Save** (or ⌘S) in the Notebook writes `notebooks/<name>.md`. It reads on its
+own -- the piece, its sets a bar to a line, then every level and its cells with
+✓ or ✗ -- and ends with an HTML comment holding the exact notebook as JSON,
+which is what **saved…** reopens: the same levels, cells, target and the level
+you were on. The ✓ marks are worked out again from the text when the file is
+written, not copied from the screen. A Markdown file without that comment still
+opens: each ```` ```mathematica ```` block becomes a cell.
+
+**Export PDF…** typesets the notebook with `xelatex` (TeX Live's, from
+`/Library/TeX/texbin`): the piece and its score, then level by level each cell
+written with € as the paper writes it, its Mathematica form for `iC` in
+`reference/SSSiCv102.wl`, the score with that level's blocks in their colours,
+and how far each level got. Tick which of those go in. The Mathematica form is
+checked against `wolframscript`: it evaluates to the same set.
 
 ## Notation
 
@@ -112,7 +138,7 @@ Drawing several hundred notes in one pass is what made the browser crawl.
 A rest is a note with **pitch 0**, so a set row stays all-integers and formulas
 like `€(i..n)[{16, 60+i}]` keep working -- a symbolic rest would break that. 0 is
 not a playable MIDI pitch, so there is no ambiguity. You can write rests in an IC
-form directly: `IC2[{16,60}, {16,0}, {32,67}]`.
+form directly: `IC(2)[{16,60}, {16,0}, {32,67}]`.
 
 The marker is not uniform across encodings, because 0 is already meaningful in
 some of them: `pair`, `pair_flip` and `degree` use `0`; `interval` uses `1000`
@@ -202,6 +228,7 @@ core/encoders.py   the encoder registry
 core/metrics.py    the compressibility bench
 core/setfmt.py     set-literal parse and serialize
 core/setfile.py    .music.json transcriptions: load, check, save
+core/notebookfile.py  notebooks as Markdown, and as LaTeX for the PDF
 core/ic.py         IC model, parser, expander
 core/score.py      notes -> measures for the renderer
 core/reduce.py     PARKED: ReduceSetList port, not wired in
@@ -209,5 +236,6 @@ core/findseq.py    PARKED: FindSequenceFunction equivalent
 server/app.py      HTTP API
 web/               UI; VexFlow 4.2.2 vendored in web/vendor (MIT)
 scores/            transcriptions, shown in the library menu
+notebooks/         saved notebooks, Markdown with the state inside
 docs/transcribing.md   how to read a picture of a score into a set file
 ```

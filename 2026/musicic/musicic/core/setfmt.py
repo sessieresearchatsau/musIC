@@ -93,6 +93,8 @@ def parse_set(text: str):
     """
     s = _strip_boxes(text).strip()
     s = s.replace("[", "{").replace("]", "}")
+    # Mathematica breaks long output with a backslash at the end of a line.
+    s = re.sub(r"\\\s*\n", " ", s)
     if not s:
         return []
 
@@ -121,6 +123,15 @@ def parse_set(text: str):
         return _num(m.group().replace(" ", ""))
 
     value = parse_value()
+    while pos < len(s) and s[pos] in " \t\r\n,":
+        pos += 1
+    if pos < len(s):
+        # More follows the first value: rows pasted without the outer braces,
+        # as {1}, {1, 2}, ... Read them all rather than only the first.
+        s, pos = "{" + s + "}", 0
+        value = parse_value()
+        if s[pos:].strip(" \t\r\n,"):
+            raise ValueError(f"cannot parse at offset {pos}: {s[pos:pos+24]!r}")
 
     # Peel a redundant outer wrapper: {{{...},{...}}} -> {{...},{...}}
     while (isinstance(value, list) and len(value) == 1

@@ -1,0 +1,374 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>musIC — notebook</title>
+<!-- VexFlow 4.2.2 (Bravura build), vendored so the tool works offline. MIT. -->
+<script src="/static/vendor/vexflow.js"></script>
+<style>
+:root{
+  --bg:#efece6; --panel:#fff; --ink:#1b1a18; --dim:#6c6862; --line:#e2ded7;
+  --accent:#a8331e; --accent-soft:#fbeae6; --mark:#f5d76e; --paper:#fffdf8;
+  --serif:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;
+  --mono:ui-monospace,SFMono-Regular,Menlo,monospace;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font:13px/1.5 ui-sans-serif,-apple-system,"Segoe UI",system-ui,sans-serif}
+header{display:flex;gap:8px 14px;align-items:center;flex-wrap:wrap;
+  padding:9px 14px;background:var(--panel);border-bottom:1px solid var(--line);
+  position:sticky;top:0;z-index:20}
+h1{font-size:14px;margin:0;font-weight:650;letter-spacing:.02em;white-space:nowrap}
+nav{display:flex;gap:2px;background:#f3f1ec;border-radius:6px;padding:2px;
+  max-width:100%;overflow-x:auto;scrollbar-width:none}
+nav a{flex:none}
+nav a{padding:3px 10px;border-radius:4px;color:var(--dim);text-decoration:none;font-size:12px}
+nav a[aria-current=page]{background:var(--panel);color:var(--ink);
+  box-shadow:0 1px 2px rgba(0,0,0,.08)}
+nav a:hover{color:var(--accent)}
+.tb{display:flex;gap:6px;align-items:center;flex-wrap:wrap;
+  padding-left:14px;border-left:1px solid var(--line)}
+.fld{display:inline-flex;gap:5px;align-items:center;white-space:nowrap;
+  color:var(--dim);font-size:12px}
+button,select,input{font:inherit;padding:5px 9px;border:1px solid var(--line);
+  border-radius:5px;background:var(--panel);color:var(--ink)}
+input[type=number]{width:58px}
+button{cursor:pointer}
+button:hover{border-color:var(--accent);color:var(--accent)}
+button:disabled{opacity:.4;cursor:default}
+button.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+button.primary:hover{filter:brightness(1.1);color:#fff}
+button:focus-visible,select:focus-visible,input:focus-visible,a:focus-visible{
+  outline:2px solid var(--accent);outline-offset:1px}
+.tb>button{padding:4px 8px;font-size:12px}
+#status{flex:1 1 160px;text-align:right;min-width:0;overflow:hidden;
+  text-overflow:ellipsis;white-space:nowrap;color:var(--dim);font-size:11px}
+
+main{display:grid;grid-template-columns:var(--left,minmax(360px,.85fr)) 12px minmax(0,1.15fr);
+  gap:3px;padding:18px;align-items:start;max-width:1500px;margin:0 auto}
+/* drag handles: the notebook against the music, and a score against its sets */
+.vsplit{align-self:stretch;cursor:col-resize;border-radius:4px;position:relative;min-height:200px}
+.vsplit::after,.hsplit::after{content:"";position:absolute;background:#cfc8bc;border-radius:2px;
+  transition:background .12s}
+.vsplit::after{left:5px;top:40%;width:3px;height:48px}
+.hsplit{height:10px;cursor:row-resize;position:relative;flex:0 0 auto;margin:-9px 0}
+.hsplit::after{top:3px;left:calc(50% - 24px);width:48px;height:3px}
+.vsplit:hover::after,.hsplit:hover::after,.vsplit:focus-visible::after,.hsplit:focus-visible::after,
+.dragging .vsplit::after{background:var(--accent)}
+.vsplit:focus-visible,.hsplit:focus-visible{outline:none}
+body.dragging{user-select:none}
+/* levels of concatenation */
+.levels{display:flex;gap:4px;align-items:center;flex-wrap:wrap;padding:0 14px 8px}
+.levels button{padding:3px 11px;font-size:12px;border-radius:12px}
+.levels button[aria-selected=true]{background:var(--ink);color:#fff;border-color:var(--ink)}
+.levels .sub{color:var(--dim);font-size:11.5px;margin-left:4px}
+#nextLevel:not(:disabled){background:#2f6b46;color:#fff;border-color:#2f6b46}
+main>*{min-width:0}
+
+/* ---- the notebook: In/Out cells, as in Mathematica */
+.book{background:var(--panel);border:1px solid var(--line);border-radius:8px;
+  padding:10px 0 12px}
+.hint{color:var(--dim);font-size:11.5px;padding:0 14px 8px;margin:0}
+.hint kbd{font:10.5px var(--mono);border:1px solid var(--line);border-bottom-width:2px;
+  border-radius:3px;padding:0 4px;background:#faf9f7}
+.cell{position:relative;padding:6px 14px 8px 14px;border-left:3px solid transparent}
+.cell.active{border-left-color:var(--accent);background:#fdfbf8}
+.cell.playing{border-left-color:#2f6b46;background:#eef7f1;transition:background .2s}
+.lbl{font:italic 11.5px var(--serif);color:#50708f;display:block;margin:0 0 3px}
+.cell .out .lbl{color:#8f5a50}
+.ed{position:relative}
+/* The textarea is transparent and sits on a mirror that draws the same text
+   with its highlights -- a textarea cannot colour parts of its own text. The
+   two must match to the pixel: same font, padding, border and wrapping. */
+.ed textarea,.ed .mirror{font:13px/1.55 var(--mono);padding:7px 36px 7px 9px;
+  border:1px solid var(--line);border-radius:5px;white-space:pre-wrap;
+  overflow-wrap:break-word;word-break:normal;tab-size:2;letter-spacing:0;margin:0}
+.ed .mirror{position:absolute;inset:0;pointer-events:none;color:var(--ink);
+  border-color:transparent;overflow:hidden;background:#fff}
+.ed textarea{position:relative;display:block;width:100%;resize:none;overflow:hidden;
+  background:transparent;color:transparent;caret-color:var(--ink);min-height:36px}
+.ed textarea::selection{background:rgba(80,112,143,.22);color:transparent}
+.ed textarea:focus{outline:none;border-color:#b9b2a7}
+.cell.active .ed textarea{border-color:#cfc6b8}
+.mirror .h{font-weight:700}
+.mirror .lit{background:rgba(168,51,30,.2);border-radius:2px;box-shadow:0 0 0 1px rgba(168,51,30,.35)}
+.mirror .sel{background:rgba(245,215,110,.75);border-radius:2px}
+/* bracket matching: the pair at the cursor boxed, a bracket with no partner red */
+.mirror .pair{background:rgba(80,112,143,.16);box-shadow:0 0 0 1px rgba(80,112,143,.55);border-radius:2px}
+.mirror .lone{color:#c62828!important;background:rgba(198,40,40,.12);border-radius:2px;
+  text-decoration:underline wavy #c62828;text-underline-offset:3px}
+.run{position:absolute;right:6px;top:5px;padding:1px 7px;font-size:12px;line-height:1.5;
+  border-color:transparent;background:transparent;color:var(--dim)}
+.cell .tools{display:flex;gap:4px;justify-content:flex-end;margin-top:3px;opacity:0;
+  transition:opacity .12s}
+.cell:hover .tools,.cell.active .tools{opacity:1}
+.tools button{padding:1px 7px;font-size:11px;color:var(--dim)}
+.out{margin-top:4px}
+.out .res{font-size:12px;color:var(--dim)}
+.out .res b{color:var(--ink);font-weight:600}
+.out .err{color:#8a2318;background:#fdecea;border:1px solid #f2c2ba;border-radius:5px;
+  padding:5px 8px;font:12px var(--mono);white-space:pre-wrap}
+.out .stale{color:var(--warn,#8a6100);font-style:italic}
+.chips{display:flex;flex-wrap:wrap;gap:4px;margin-top:5px}
+.chip{display:inline-flex;gap:5px;align-items:center;padding:1px 7px 1px 5px;
+  border:1px solid var(--line);border-radius:10px;font:11.5px var(--mono);
+  cursor:pointer;background:#fff;color:var(--ink)}
+.chip .sw{width:9px;height:9px;border-radius:2px}
+.chip small{color:var(--dim);font:10.5px ui-sans-serif,system-ui,sans-serif}
+.chip:hover,.chip.hot{border-color:var(--accent);background:var(--accent-soft)}
+.chip.on{background:#fcf1c9;border-color:#d9b640}
+details{margin-top:5px}
+details summary{cursor:pointer;color:var(--dim);font-size:11.5px}
+details code{display:block;font:11.5px var(--mono);background:#f6f4f0;border:1px solid var(--line);
+  border-radius:5px;padding:6px 8px;margin-top:4px;max-height:120px;overflow:auto;word-break:break-all}
+.addcell{margin:6px 14px 0;border-style:dashed;color:var(--dim);width:calc(100% - 28px)}
+
+/* ---- saving and exporting */
+#savedIn{max-width:150px;font-size:12px;padding:4px 6px}
+dialog{border:1px solid var(--line);border-radius:10px;padding:18px 20px;max-width:440px;
+  box-shadow:0 12px 40px rgba(0,0,0,.18);color:var(--ink)}
+dialog::backdrop{background:rgba(30,25,20,.28)}
+dialog h3{margin:0 0 4px;font:600 18px var(--serif)}
+dialog .hint{padding:0;margin:0 0 12px}
+dialog label{display:block;margin:0 0 10px;font-size:13px;cursor:pointer}
+dialog label small{display:block;color:var(--dim);font-size:11.5px;margin-left:22px}
+dialog menu{display:flex;justify-content:flex-end;gap:8px;margin:16px 0 0;padding:0}
+
+/* ---- starting from a piece */
+.btn{display:inline-block;font:inherit;padding:4px 8px;font-size:12px;border:1px solid var(--line);
+  border-radius:5px;background:var(--panel);color:var(--ink);cursor:pointer}
+.btn:hover{border-color:var(--accent);color:var(--accent)}
+.btn:focus-within{outline:2px solid var(--accent);outline-offset:1px}
+.vh{position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;
+  clip:rect(0 0 0 0);white-space:nowrap}
+#pieceIn,#trackPick{max-width:170px;font-size:12px;padding:4px 6px}
+
+/* ---- the output: the active cell engraved, and its rows */
+.stage{position:sticky;top:64px;display:flex;flex-direction:column;gap:10px;
+  height:calc(100vh - 82px)}
+.view{display:flex;flex-direction:column;gap:14px;min-height:0;flex:1 1 auto}
+.stabs{display:flex;gap:4px}
+.stabs button{padding:4px 14px;font-size:12px;border-radius:5px 5px 0 0}
+.stabs button[aria-selected=true]{background:var(--ink);color:#fff;border-color:var(--ink)}
+.cover{font-size:12px;color:var(--dim)}
+.cover b{color:var(--ink)}
+#tscore svg{display:block}
+/* a long piece scrolls inside its page, leaving room for the sets below */
+#targetView .paper{max-height:46vh;flex:0 0 auto}
+#targetView .setp{flex:1 1 240px}
+#tbars{overflow:auto;padding:2px 0;flex:1 1 auto;font-family:var(--mono)}
+/* how far the notebook has got: rows a cell reproduces, and rows it gets wrong */
+.row.ok{background:#e7f4ea;border-left-color:#2f6b46}
+.row.bad{background:#fdecea;border-left-color:#a8331e}
+.row.ok.sel,.row.bad.sel{background:var(--mark)}
+.claim{font-size:12px;margin-top:4px;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.claim .ok{color:#2f6b46;font-weight:600}
+.claim .bad{color:#a8331e;font-weight:600}
+.claim button{padding:0 6px;font-size:11px;color:var(--dim)}
+body:not(.has-target) .tools .needs-target{display:none}
+.paper{background:var(--paper);border-radius:2px;padding:22px 26px 18px;
+  box-shadow:0 1px 3px rgba(0,0,0,.08),0 10px 30px rgba(0,0,0,.07);
+  overflow:auto;flex:0 1 auto;min-height:180px}
+.phead{display:flex;justify-content:space-between;align-items:baseline;gap:12px;
+  flex-wrap:wrap}
+.ptitle{font:600 20px/1.2 var(--serif);margin:0}
+.ptitle small{font:italic 13px var(--serif);color:var(--dim);margin-left:8px}
+.plinks{display:flex;gap:10px;font-size:12px}
+.plinks a{color:var(--dim)}
+.plinks a:hover{color:var(--accent)}
+.pmeta{font:italic 13px var(--serif);color:var(--dim);margin:2px 0 4px}
+#score svg{display:block}
+.empty{text-align:center;color:var(--dim);font:14px/1.6 var(--serif);padding:40px 10px}
+.folio{display:flex;justify-content:center;align-items:center;gap:12px;margin-top:8px;
+  font:13px var(--serif);color:var(--dim)}
+.vf-note{cursor:pointer}
+#tscore .done path{fill:#2f6b46;stroke:#2f6b46}
+#tscore .wrong path{fill:#d9534f;stroke:#d9534f}
+.hot path{fill:var(--accent)!important;stroke:var(--accent)!important}
+/* the note sounding now, while the whole song plays */
+.sounding path{fill:#1f6fd1!important;stroke:#1f6fd1!important}
+.row.sounding{background:#e3eefc;border-color:#1f6fd1}
+.picked path{fill:#9a7400!important;stroke:#9a7400!important}
+
+.setp{background:var(--panel);border:1px solid var(--line);border-radius:8px;
+  display:flex;flex-direction:column;min-height:0;flex:1 1 220px;overflow:hidden}
+.setp h2{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--dim);
+  margin:0;padding:8px 12px;border-bottom:1px solid var(--line);display:flex;
+  justify-content:space-between;gap:8px}
+.readout{padding:6px 12px;border-bottom:1px solid var(--line);background:#fcfbf9;
+  font-size:12px;color:var(--dim);min-height:32px}
+.readout b{color:var(--ink)}
+#bars{overflow:auto;padding:2px 0;flex:1 1 auto;font-family:var(--mono)}
+.bar{display:grid;grid-template-columns:44px 1fr;gap:6px;padding:4px 12px;
+  border-bottom:1px solid #f3f1ec}
+.bar .num{font:italic 12px var(--serif);color:var(--dim);padding-top:2px}
+.bar .rows{display:flex;flex-wrap:wrap;gap:3px}
+.row{display:inline-flex;align-items:baseline;gap:3px;padding:0 5px;border-radius:3px;
+  cursor:pointer;white-space:nowrap;border:1px solid transparent;
+  border-left:3px solid transparent;font-size:12px}
+.row i{font-style:normal;font-size:9.5px;color:var(--dim)}
+.row:hover,.row.hot{background:var(--accent-soft);border-color:var(--accent)}
+.row.sel{background:var(--mark)}
+.foot{border-top:1px solid var(--line);padding:8px 12px;display:flex;gap:6px;
+  flex-wrap:wrap;align-items:center}
+.foot .sub{color:var(--dim);font-size:11px;flex-basis:100%}
+
+@media(max-width:1100px){
+  main{grid-template-columns:1fr}
+  .vsplit{display:none}
+  .stage{position:static;height:auto}
+  #bars,#tbars{max-height:320px}
+}
+@media(max-width:760px){
+  header{position:static;padding:8px 12px}
+  .tb{padding-left:0;border-left:0}
+  #status{flex-basis:100%;text-align:left}
+  main{padding:8px;gap:10px}
+  .paper{padding:14px 8px}
+}
+</style>
+</head>
+<body>
+<header>
+  <h1>musIC</h1>
+  <nav><a href="/">Workbench</a><a href="/sheet">Sheet</a><a href="/notebook" aria-current="page">Notebook</a><a href="/concatenate">Concatenate</a></nav>
+  <div class="tb">
+    <label class="fld">notebook <select id="book"></select></label>
+    <button id="renameBook" title="Rename this notebook">Rename</button>
+    <button id="deleteBook" title="Delete this notebook">Delete</button>
+  </div>
+  <div class="tb">
+    <button id="saveBook" title="Save to the project's notebooks/ folder as Markdown (⌘S)">Save</button>
+    <select id="savedIn" aria-label="Open a saved notebook"><option value="">saved…</option></select>
+    <button id="exportBtn" title="Typeset this notebook as a PDF, level by level">Export PDF…</button>
+  </div>
+  <div class="tb" title="Start a notebook that works toward a piece: its sets become the target your cells are checked against">
+    <label class="btn" for="midiIn">Open MIDI…</label>
+    <input type="file" id="midiIn" class="vh" accept=".mid,.midi,audio/midi,audio/x-midi">
+    <select id="pieceIn" aria-label="Start from a library piece"><option value="">library piece…</option></select>
+    <select id="trackPick" hidden aria-label="Which track"></select>
+  </div>
+  <div class="tb">
+    <label class="fld">rows are <select id="encoder"></select></label>
+    <label class="fld" title="The order of each set's entries. Changing it rewrites every cell to match.">sets are <select id="columns"></select></label>
+    <label class="fld">bar <input type="number" id="numer" min="1" max="16" value="4">
+      / <select id="denom"><option>2</option><option selected>4</option><option>8</option></select></label>
+    <label class="fld">tempo <input type="number" id="tempo" min="20" max="300" value="120"></label>
+  </div>
+  <div class="tb">
+    <button id="runAll" class="primary">▶ Run all</button>
+    <button id="play" title="Play the cell you are in">▶ Play</button>
+    <button id="playAll" title="Play the whole song (or, without a piece, every cell top to bottom)">▶ Play all</button>
+    <button id="stop" aria-label="Stop" title="Stop">■</button>
+  </div>
+  <span id="status"></span>
+</header>
+
+<main>
+  <section class="book" aria-label="Notebook">
+    <div class="levels" id="levels" role="tablist" aria-label="Levels of concatenation" hidden></div>
+    <p class="hint">Write a set or an <b>€</b> expression (<code>IC</code> works too).
+      <kbd>Shift</kbd>+<kbd>Enter</kbd> runs a cell. Select text to light up the
+      notes it makes; click notes or blocks to select them.</p>
+    <div id="cells"></div>
+    <button class="addcell" id="addCell">+ New cell</button>
+  </section>
+
+  <div class="vsplit" id="vsplit" role="separator" aria-orientation="vertical"
+       aria-label="Drag to resize the notebook and the music" tabindex="0"></div>
+
+  <div class="stage">
+    <div class="stabs" id="stabs" role="tablist" hidden>
+      <button role="tab" data-tab="target" aria-selected="true">Target</button>
+      <button role="tab" data-tab="out" aria-selected="false" id="outTab">Out</button>
+    </div>
+
+    <!-- the piece being worked toward: every set, to select and build from -->
+    <div class="view" id="targetView" hidden>
+      <section class="paper" aria-label="Target score">
+        <div class="phead">
+          <h2 class="ptitle" id="ttitle">Target</h2>
+          <span class="cover" id="tcover"></span>
+        </div>
+        <div class="pmeta" id="tmeta"></div>
+        <div id="tscore"></div>
+      </section>
+      <div class="hsplit" role="separator" aria-orientation="horizontal"
+           aria-label="Drag to resize the score and the sets" tabindex="0"></div>
+      <section class="setp" aria-label="Target sets">
+        <h2><span id="tsetsTitle">Target sets</span><span id="tsetMeta"></span></h2>
+        <div class="readout" id="treadout">Click sets or notes to select them, shift-click for a range,
+          then make a cell from them.</div>
+        <div id="tbars" class="mono"></div>
+        <div class="foot">
+          <button id="newFromSel" class="primary" disabled>+ New cell from selection</button>
+          <button id="tplaySel" disabled>▶ Play</button>
+          <button id="tclear" disabled>Clear</button>
+          <button id="checkAll">✓ Check all</button>
+          <button id="nextLevel" disabled>Next level →</button>
+          <span class="sub" id="tinfo">Green: written and matching. Red: written, but different.</span>
+        </div>
+      </section>
+    </div>
+
+    <div class="view" id="outView">
+    <section class="paper" aria-label="Score">
+      <div class="phead">
+        <h2 class="ptitle" id="ptitle">Out</h2>
+        <div class="plinks" id="plinks" hidden>
+          <a id="toSheet" href="/sheet">Open in Sheet ↗</a>
+          <a id="toBench" href="/">Workbench ↗</a>
+        </div>
+      </div>
+      <div class="pmeta" id="pmeta"></div>
+      <div id="score"><div class="empty">Run a cell to see its music here.</div></div>
+      <div class="folio" id="folio" hidden>
+        <button id="prevPg" aria-label="Previous page">‹</button>
+        <span id="pageNo"></span>
+        <button id="nextPg" aria-label="Next page">›</button>
+      </div>
+    </section>
+    <div class="hsplit" role="separator" aria-orientation="horizontal"
+         aria-label="Drag to resize the score and the set" tabindex="0"></div>
+
+    <section class="setp" aria-label="Set">
+      <h2><span id="setTitle">Set</span><span id="setMeta"></span></h2>
+      <div class="readout" id="readout">Select text in a cell, or hover a note or a row.</div>
+      <div id="bars"></div>
+      <div class="foot">
+        <button id="playSel" disabled>▶ Play selection</button>
+        <button id="clearSel" disabled>Clear</button>
+        <button id="copySel">Copy set</button>
+        <span class="sub" id="selInfo">Click notes, rows or € blocks to select; shift-click for a range.</span>
+      </div>
+    </section>
+    </div>
+  </div>
+</main>
+
+<dialog id="exportDlg" aria-labelledby="exportTitle">
+  <form method="dialog">
+    <h3 id="exportTitle">Export as PDF</h3>
+    <p class="hint">Typeset with LaTeX: the piece, then how it was concatenated, level by level.
+      Choose what goes in.</p>
+    <label><input type="checkbox" name="math" checked> The expressions as math
+      <small>€ with its index below and last value above</small></label>
+    <label><input type="checkbox" name="score" checked> Sheet music
+      <small>the song, and each level with its blocks coloured</small></label>
+    <label><input type="checkbox" name="items" checked> Items and compression
+      <small>the sets, each level's items, and how far each level got</small></label>
+    <label><input type="checkbox" name="code" checked> Mathematica code
+      <small>iC[…] from SSSiCv102.wl, ready to evaluate</small></label>
+    <menu>
+      <button value="cancel" formnovalidate>Cancel</button>
+      <button value="ok" class="primary">Export PDF</button>
+    </menu>
+  </form>
+</dialog>
+
+<script src="/static/shared.js"></script>
+<script src="/static/notebook.js"></script>
+</body>
+</html>

@@ -21,6 +21,13 @@ header{display:flex;gap:8px 14px;align-items:center;flex-wrap:wrap;
   position:sticky;top:0;z-index:20}
 h1{font-size:14px;margin:0;font-weight:650;letter-spacing:.02em;white-space:nowrap}
 h1 small{font-weight:400;color:var(--dim);margin-left:6px}
+nav{display:flex;gap:2px;background:#f3f1ec;border-radius:6px;padding:2px;
+  max-width:100%;overflow-x:auto;scrollbar-width:none}
+nav a{flex:none}
+nav a{padding:3px 10px;border-radius:4px;color:var(--dim);text-decoration:none;font-size:12px}
+nav a[aria-current=page]{background:var(--panel);color:var(--ink);
+  box-shadow:0 1px 2px rgba(0,0,0,.08)}
+nav a:hover{color:var(--accent)}
 /* a toolbar group: wraps as a unit, split from its neighbour by a hairline */
 .tb{display:flex;gap:6px;align-items:center;flex-wrap:wrap;
   padding-left:14px;border-left:1px solid var(--line)}
@@ -153,6 +160,7 @@ textarea{width:100%;min-height:74px;font:12px/1.45 ui-monospace,Menlo,monospace;
 <body>
 <header>
   <h1>musIC <small>music ⇄ set workbench</small></h1>
+  <nav><a href="/" aria-current="page">Workbench</a><a id="toSheet" href="/sheet">Sheet</a><a href="/notebook">Notebook</a><a href="/concatenate">Concatenate</a></nav>
   <!-- Controls are grouped so a narrow window wraps whole groups, not a
        label away from its select. -->
   <div class="tb">
@@ -274,12 +282,14 @@ textarea{width:100%;min-height:74px;font:12px/1.45 ui-monospace,Menlo,monospace;
           <button id="renderIC">Expand &amp; render</button>
           <select id="icEx">
             <option value="">examples…</option>
-            <option value="IC8[{16,60}]">€8 — eight repeats</option>
+            <option value="IC(8)[{16,60}]">€(8) — eight repeats</option>
             <option value="IC(i=0..7)[{16, 60+2*i}]">rising whole-tone scale</option>
+            <option value="IC(i=0,n=3)[{16, 60+n-i}]">limits as a sum: i=0 up to n=3</option>
             <option value="IC(i=0..1)[{62, 24/3^i}]">notebook: geometric duration</option>
             <option value="IC(j=0..3)[{8, 1/6*(j^3-13*j)+81}]">Zelda cubic 81,79,78,79</option>
-            <option value="IC4[IC(i=1..3)[{8, 60+i}], {16, 67}]">nested</option>
-            <option value="IC(k=1..3)[{16, 60}, IC0[{8,99}], {16, 60+k}]">€0 vanishes</option>
+            <option value="IC(4)[IC(i=1..3)[{8, 60+i}], {16, 67}]">nested</option>
+            <option value="IC(i,1,3)[IC(i)[{16, 60+i}]]">count from an index: 1, 2, 3 copies</option>
+            <option value="IC(k=1..3)[{16, 60}, IC(0)[{8,99}], {16, 60+k}]">€(0) vanishes</option>
           </select>
         </div>
         <div class="out mono" id="icOut" hidden></div>
@@ -310,6 +320,7 @@ textarea{width:100%;min-height:74px;font:12px/1.45 ui-monospace,Menlo,monospace;
   </div>
 </main>
 
+<script src="/static/shared.js"></script>
 <script src="/static/app.js"></script>
 </body>
 </html>

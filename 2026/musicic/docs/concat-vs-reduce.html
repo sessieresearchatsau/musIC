@@ -1,0 +1,280 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>A New Reducer for Indexed Concatenation</title>
+<style>
+@page { size: Letter; margin: 20mm 19mm 20mm 19mm; }
+:root{
+  --ink:#1b1a18; --dim:#5f5b55; --line:#d9d4cc; --soft:#f6f4f0; --accent:#a8331e;
+  --ok:#2f6b3a; --oksoft:#eaf3ec; --badsoft:#fbeae6;
+}
+*{box-sizing:border-box}
+html{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+body{margin:0;color:var(--ink);background:#fff;
+  font:10.4pt/1.5 "Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif}
+.page{max-width:178mm;margin:0 auto}
+h1{font-size:21pt;line-height:1.2;margin:0 0 4pt;font-weight:600}
+.subtitle{font-size:12pt;color:var(--dim);font-style:italic;margin:0 0 10pt}
+.meta{font:9pt/1.4 ui-sans-serif,-apple-system,"Helvetica Neue",Arial,sans-serif;color:var(--dim);
+  border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:5pt 0;margin-bottom:14pt}
+h2{font-size:13.5pt;margin:18pt 0 6pt;font-weight:600;break-after:avoid}
+h3{font-size:11pt;margin:13pt 0 4pt;font-weight:600;break-after:avoid}
+h2 .n,h3 .n{color:var(--accent);margin-right:6pt}
+p{margin:0 0 7pt}
+ul,ol{margin:0 0 7pt;padding-left:16pt}
+li{margin:0 0 3pt}
+code,.mono{font:8.6pt/1.45 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+p code,li code,td code{background:var(--soft);padding:0 2pt;border-radius:2pt}
+pre{font:8.1pt/1.45 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;background:var(--soft);
+  border:1px solid var(--line);border-radius:3pt;padding:6pt 8pt;margin:4pt 0 9pt;
+  white-space:pre-wrap;word-break:break-word;break-inside:avoid}
+pre .c{color:#7a756e}
+pre .hl{background:#f3e3a6}
+.cap{font:8.6pt/1.35 ui-sans-serif,-apple-system,"Helvetica Neue",Arial,sans-serif;color:var(--dim);
+  margin:-4pt 0 9pt}
+table{width:100%;border-collapse:collapse;margin:4pt 0 10pt;break-inside:avoid;
+  font:8.8pt/1.35 ui-sans-serif,-apple-system,"Helvetica Neue",Arial,sans-serif}
+th{text-align:left;font-weight:600;border-bottom:1.2pt solid var(--ink);padding:3pt 5pt;vertical-align:bottom}
+td{border-bottom:1px solid var(--line);padding:3pt 5pt;vertical-align:top}
+td.r,th.r{text-align:right;font-variant-numeric:tabular-nums}
+td.win{color:var(--ok);font-weight:700}
+tr.note td{color:var(--dim);font-size:8pt;border-bottom:0}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:8pt;margin:4pt 0 9pt;break-inside:avoid}
+.two>div{border:1px solid var(--line);border-radius:3pt;padding:6pt 8pt}
+.two h4{margin:0 0 3pt;font:600 8.6pt ui-sans-serif,-apple-system,"Helvetica Neue",Arial,sans-serif;
+  text-transform:uppercase;letter-spacing:.06em;color:var(--dim)}
+.two .old{background:#fbf9f6}
+.two .new{background:var(--oksoft);border-color:#c9dfcd}
+.two p{margin:0;font-size:9.6pt}
+.key{border-left:3pt solid var(--accent);background:#fcf7f5;padding:6pt 9pt;margin:6pt 0 10pt;break-inside:avoid}
+.key p:last-child{margin:0}
+.demo{margin:0 0 10pt}
+.demo .lbl{break-after:avoid}
+.demo .lbl{font:600 9pt ui-sans-serif,-apple-system,"Helvetica Neue",Arial,sans-serif;margin-bottom:2pt}
+.demo .row{font:8.2pt/1.45 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+.demo .row>span{display:inline-block;vertical-align:top;margin-bottom:2pt}
+.demo .row>.t{width:22mm}
+.demo .row>.v{width:calc(100% - 23mm)}
+.demo .row .t{font:600 8.4pt ui-sans-serif,-apple-system,"Helvetica Neue",Arial,sans-serif;color:var(--dim)}
+.demo .row .v{word-break:break-word}
+.demo .new{color:var(--ok)}
+.pill{display:inline-block;font:600 7.6pt ui-sans-serif,-apple-system,"Helvetica Neue",Arial,sans-serif;
+  border-radius:8pt;padding:0 5pt;margin-left:4pt;vertical-align:1pt}
+.pill.old{background:#eee9e2;color:var(--dim)}
+.pill.new{background:var(--oksoft);color:var(--ok)}
+.pagebreak{break-before:page}
+.small{font-size:9pt;color:var(--dim)}
+</style>
+</head>
+<body>
+<div class="page">
+
+<h1>A New Reducer for Indexed Concatenation</h1>
+<p class="subtitle"><code>concat.py</code> compared with <code>reduce.py</code>, its predecessor in the musIC workbench</p>
+<div class="meta">musIC project · October 5, 2026 · Code: <code>2026/musicic/musicic/core/concat.py</code> (new, 550 lines) and <code>core/reduce.py</code> (previous, 381 lines, with <code>core/findseq.py</code>, 173 lines)</div>
+
+<h2><span class="n">1</span>Summary</h2>
+<p>Both programs take a list of integer rows (for example <code>{{1}, {1, 2}, {2}, {2}, {1, 1}, …}</code>) and try to rewrite it as nested indexed concatenations (ICs), so that the expression expands back to exactly the original list. <code>reduce.py</code> is a Python port of the strategy in Mathematica's <code>ReduceSetList</code> (package <code>SSSiCv102.wl</code>). <code>concat.py</code> is a new reducer written from scratch, with a different search strategy.</p>
+<p>The measure throughout is <b>leaves</b>: the number of rows you have to write down to state an expression. A plain row counts 1, and an IC counts the leaves of its body. A list that only has its repeated rows collapsed is the baseline.</p>
+
+<table>
+<thead><tr><th>Reference set</th><th class="r">Rows</th><th class="r">Repeats collapsed</th><th class="r">Mathematica <code>ReduceSetList</code></th><th class="r"><code>reduce.py</code></th><th class="r"><code>concat.py</code></th></tr></thead>
+<tbody>
+<tr><td>Set 2 (first 463 rows)</td><td class="r">463</td><td class="r">110</td><td class="r">7</td><td class="r">110</td><td class="r win">7</td></tr>
+<tr><td>Set 3</td><td class="r">943</td><td class="r">202</td><td class="r">13</td><td class="r">202</td><td class="r win">8</td></tr>
+<tr><td>Set 4</td><td class="r">743</td><td class="r">270</td><td class="r">6</td><td class="r">270</td><td class="r win">6</td></tr>
+<tr><td>Set 5</td><td class="r">499</td><td class="r">121</td><td class="r">120</td><td class="r">121</td><td class="r win">14</td></tr>
+<tr><td>Set 6</td><td class="r">499</td><td class="r">145</td><td class="r">141</td><td class="r">145</td><td class="r win">16</td></tr>
+<tr class="note"><td colspan="6">Leaves in each result; lower is better. Every result in the table expands back to its input exactly. The Mathematica column was produced by running <code>ReduceSetList</code> from <code>SSSiCv102.wl</code> through <code>wolframscript</code>.</td></tr>
+</tbody></table>
+
+<div class="key">
+<p><b>Main findings.</b> On these five sets, <code>reduce.py</code> never finds an indexed block. It only collapses repeated rows. <code>concat.py</code> finds the main block in every set and matches or beats Mathematica on all five: equal on Sets 2 and 4, and smaller on Set 3 (8 against 13) and on Sets 5 and 6 (14 against 120, 16 against 141), where <code>ReduceSetList</code> also finds no main block.</p>
+<p>The difference comes mostly from two design decisions, explained in Section 2: <code>concat.py</code> treats the repeat count of a run as data to be fitted, and it scores every candidate block instead of committing to the first one that matches.</p>
+</div>
+
+<h2><span class="n">2</span>Key differences in the code and the reasoning</h2>
+<p>Both programs have the same overall shape: find stretches of the list that repeat with a regular change, fit a formula for each changing number as a function of an index <i>k</i>, and accept a candidate only if it expands back exactly. They differ in what counts as "the same shape", which numbers are fitted, how a block is chosen and extended, and what happens to the rows around it.</p>
+
+<table>
+<thead><tr><th style="width:21%">Question</th><th style="width:39%"><code>reduce.py</code> (port of <code>ReduceSetList</code>)</th><th><code>concat.py</code> (new)</th></tr></thead>
+<tbody>
+<tr><td>What has to match between periods?</td><td>A skeleton in which every integer except 1 becomes 0. A run is <code>IC(…)</code> and a single row is <code>{…}</code>, so the two never match.</td><td>Only the row lengths. A single row, a run and a progression are all one kind of object, an <i>atom</i> (start row, step, count).</td></tr>
+<tr><td>Which numbers are fitted as functions of <i>k</i>?</td><td>The numbers inside rows. A run's repeat count is not read.</td><td>The numbers inside rows, the step of a progression, <b>and the repeat count</b>.</td></tr>
+<tr><td>How is a block chosen?</td><td>The stretch with the most identical skeletons in a row. It is then fitted, and the round fails if the fit fails.</td><td>The block is grown one period at a time while every column can still be fitted. Every candidate is scored by leaves saved, and the best one wins.</td></tr>
+<tr><td>How is a block extended?</td><td>Only to the right (<code>_absorb_right</code>).</td><td>Both directions, by evaluating the formulas at <i>k</i> = 0, −1, … and checking them against the raw rows (counts of 0 and 1 allowed), at every rotation of the body.</td></tr>
+<tr><td>What happens to the rows around a block?</td><td>The whole item list is passed through again, already partly reduced.</td><td>The rows before and after are reduced again from the raw rows, independently.</td></tr>
+<tr><td>Which formulas?</td><td><code>findseq.fit</code>: constant, polynomial, geometric, polynomial × geometric, order-2 recurrence. A line through only two points is refused.</td><td>Constant, linear, <i>a</i> + <i>c</i>·<i>b</i><sup>k</sup>, quadratic, <i>a</i> + <i>bk</i> + <i>c</i>·<i>b</i><sup>k</sup>. A line through only two points is allowed only as a constant or a step of ±1.</td></tr>
+</tbody></table>
+
+<h3><span class="n">2.1</span>Run counts are data, not part of the shape</h3>
+<p>Repeat counts that change from period to period are the most common pattern in the reference sets: "the row <code>{1, k+2}</code>, written <code>k−1</code> times". <code>reduce.py</code> cannot express this, because when it collects the numbers to fit it reads only the body of a run, never its count:</p>
+<pre><span class="c"># reduce.py</span>
+def _numbers(item):
+    if isinstance(item, IC):
+        return [v for a in item.args for v in _numbers(a)]
+        <span class="c"># item.it.stop, the repeat count, is never read</span>
+    return list(item)</pre>
+<p>The fitted template then reuses the first period's count for every period, the expansion check fails, and the block is thrown away. Tested directly on three runs, <code>{5}</code>×2, <code>{6}</code>×3, <code>{7}</code>×4: <code>reduce.py</code>'s <code>_fit_block</code> returns <code>None</code>. With the counts held equal it returns <code>€(n1..3)[€(2)[{n1 + 4}]]</code>. So it handles a run whose count stays the same, and fails as soon as the count changes.</p>
+<p><code>concat.py</code> represents every run, single row and arithmetic progression as one kind of object, and feeds the count into its own column like any other number:</p>
+<pre><span class="c"># concat.py</span>
+@dataclass(frozen=True)
+class Atom:
+    a: Row              <span class="c"># first row</span>
+    d: Row | None       <span class="c"># step between rows; None for a single row (a wildcard)</span>
+    n: int              <span class="c"># how many rows</span>
+
+def _feed(cols, atom, i, k):
+    ...                                  <span class="c"># every entry of a, then of d (if n &gt; 1), then:</span>
+    return cn[i].add(k, atom.n)          <span class="hl"># the count is a column like the others</span></pre>
+<p>Because a single row has no step, its step is a <i>wildcard</i>: it matches any step. That lets a period where something occurs once line up with periods where the same thing is a run or a progression.</p>
+
+<h3><span class="n">2.2</span>The skeleton: the value 1 and the run/row distinction</h3>
+<p><code>reduce.py</code> keeps <code>ReduceSetList</code>'s rule of turning every integer except 1 into 0 before comparing periods. So <code>{1, 1}</code> and <code>{2, 2}</code> have different skeletons (<code>{1,1}</code> against <code>{0,0}</code>). In <code>ReduceSetList</code> this keeps marker rows such as <code>{1}</code> and <code>{1, 1, 2}</code> aligned. It also breaks any period where a varying number happens to equal 1, which is common at <i>k</i> = 1. <code>concat.py</code> compares row lengths only and lets the formula fit decide whether the values agree. The cost is more candidate matches, which the scoring step has to sort out.</p>
+
+<h3><span class="n">2.3</span>Choosing a block: score everything instead of committing early</h3>
+<p><code>reduce.py</code> picks the stretch with the most consecutive identical skeletons, then tries to fit it. If the fit fails, nothing is reduced in that round. <code>concat.py</code> starts from every position and period length and grows each candidate one period at a time while all its columns still fit. The growth uses a <i>loose</i> test: a formula that needs one more point to be confirmed does not stop growth. Each candidate is then confirmed strictly and shortened if needed. Finally, the candidate that saves the most leaves wins. When two save the same, the one with simpler formulas wins:</p>
+<pre><span class="c"># concat.py, _best_block (abridged)</span>
+for _, s, p, q in _candidates(atoms)[:EXTEND_TOP]:
+    while q &gt;= 2 and (body := _body(atoms, s, p, q)) is None:
+        q -= 1                              <span class="c"># the last period was only loosely fitted</span>
+    for r in range(p):                      <span class="c"># every rotation: where does a period start?</span>
+        lo, hi, r0, r1 = _extend(rows, body, r, ...)
+        saving = _rle_leaves(rows[r0:r1]) - p
+        cand = Block(r0, r1, _rebase(body, r, lo, hi), hi - lo + 1, saving)
+        if best is None or cand.rank &gt; best.rank:   <span class="c"># rank = (saving, -formula cost)</span>
+            best = cand</pre>
+<p>The loose/strict split matters for formulas such as 2<sup>k</sup> + <i>k</i>, which need three points to determine and a fourth to confirm. A purely strict search stops at the third period, before the confirming point arrives.</p>
+
+<h3><span class="n">2.4</span>Extending a block at the row level, in place of "rolling"</h3>
+<p>The atom grouping cannot line up a period in which a run has count 0 (the run is absent) or count 1 (a bare row), and these are usually the first one or two periods. <code>ReduceSetList</code> recovers them by "rolling" the block left one item at a time. <code>reduce.py</code> has no left extension, only <code>_absorb_right</code>. <code>concat.py</code> evaluates its fitted body directly at <i>k</i> = 0, −1, … and at <i>k</i> = <i>q</i>+1, …, and keeps every period that reproduces the neighbouring rows exactly. A count of 0 simply produces no rows. The same is done for each rotation of the body, which settles where a period starts. Then the index is shifted so the block always runs from <i>k</i> = 1:</p>
+<pre><span class="c"># concat.py</span>
+def _extend(rows, body, r, lo, hi, r0, r1):
+    for _ in range(len(rows)):
+        got = _period_rows(body, r, lo - 1)        <span class="c"># the body evaluated one period earlier</span>
+        if not got or rows[r0 - len(got):r0] != got:
+            break
+        lo, r0 = lo - 1, r0 - len(got)
+    ...                                            <span class="c"># and the same to the right</span></pre>
+
+<h3><span class="n">2.5</span>The rows on either side are reduced from scratch</h3>
+<p><code>reduce.py</code>, like <code>ReduceSetList</code>, keeps working on one list that becomes more and more reduced, so a small block made early can sit across the boundary of a larger one and block it. In Mathematica's result for Set 3, the main block stops one period short because <code>{1, 3}, {1, 4}</code> had already been turned into <code>€²[{1, 2+n}]</code>. A step-by-step trace of the Wolfram code confirmed this. <code>concat.py</code> chooses the best block on the raw rows, then calls itself on the raw rows before and after it:</p>
+<pre><span class="c"># concat.py</span>
+def _reduce(rows):
+    block = _best_block(rows)
+    if block is None:
+        return _rle_tree(rows)
+    return _reduce(rows[:block.r0]) + [_block_tree(block)] + _reduce(rows[block.r1:])</pre>
+
+<h3><span class="n">2.6</span>Which formulas to trust</h3>
+<p>Any two points lie on a straight line, so a line fitted to two periods proves nothing. <code>reduce.py</code> refuses such fits outright. Mathematica accepts them, and the notebooks rely on fits like <code>4 − n</code>. <code>concat.py</code> takes a middle position: a line through two points is accepted only if it is constant or steps by ±1. Every richer formula must also predict a point it was not fitted on. An early version without this rule produced <code>€(k..2)[€(2k−1)[{59 − 29k, k + 29}]]</code>: it was valid and saved one leaf, but it described nothing real. With the rule in place, those rows are left as written (example F below).</p>
+
+<h3><span class="n">2.7</span>What stays the same: nothing is returned unverified</h3>
+<p>Both programs check the final expression by expanding it and comparing it with the input. If the check fails, they fall back to collapsing repeated rows only. So any extra compression from <code>concat.py</code> never risks a wrong answer: every claim of compression in this report comes from an expression that was expanded and compared with the input.</p>
+
+<h2><span class="n">3</span>How the two programs concatenate differently</h2>
+<p>Six small constructed lists, each isolating one of the differences above, run through both programs. <code>€(n)[x]</code> repeats <code>x</code> <i>n</i> times; <code>€(k..N)[…]</code> evaluates the body for <i>k</i> = 1, …, <i>N</i>.</p>
+
+<div class="demo">
+<div class="lbl">A. Repeat counts that grow with <i>k</i> (Section 2.1) <span class="pill old">reduce.py 5 leaves</span><span class="pill new">concat.py 1 leaf</span></div>
+<div class="row"><span class="t">Input</span><span class="v">{5}×2, {6}×3, {7}×4, {8}×5, {9}×6 (20 rows)</span>
+<span class="t">reduce.py</span><span class="v">{€(2)[{5}], €(3)[{6}], €(4)[{7}], €(5)[{8}], €(6)[{9}]}</span>
+<span class="t">concat.py</span><span class="v new">{€(k..5)[€(k + 1)[{k + 4}]]}</span></div>
+</div>
+
+<div class="demo">
+<div class="lbl">B. A count of 1 next to longer runs, and the value 1 in the skeleton (2.1, 2.2) <span class="pill old">12</span><span class="pill new">2</span></div>
+<div class="row"><span class="t">Input</span><span class="v">{1,1}, {1}, {2,2}, {1}×2, {3,3}, {1}×3, … {6,6}, {1}×6 (27 rows)</span>
+<span class="t">reduce.py</span><span class="v">{{1, 1}, {1}, {2, 2}, €(2)[{1}], {3, 3}, €(3)[{1}], {4, 4}, €(4)[{1}], {5, 5}, €(5)[{1}], {6, 6}, €(6)[{1}]}</span>
+<span class="t">concat.py</span><span class="v new">{€(k..6)[{k, k}, €(k)[{1}]]}</span></div>
+</div>
+
+<div class="demo">
+<div class="lbl">C. A first period with a run of length 0, the Set 2 pattern (2.4) <span class="pill old">17</span><span class="pill new">3</span></div>
+<div class="row"><span class="t">Input</span><span class="v">{2}, {1,2,3}, {3}, {1,1,4}, {1,2,4}, {4}, {1,1,5}×2, {1,2,5}, … (27 rows)</span>
+<span class="t">reduce.py</span><span class="v">{{2}, {1, 2, 3}, {3}, {1, 1, 4}, {1, 2, 4}, {4}, €(2)[{1, 1, 5}], {1, 2, 5}, {5}, €(3)[{1, 1, 6}], …}</span>
+<span class="t">concat.py</span><span class="v new">{€(k..6)[{k + 1}, €(k − 1)[{1, 1, k + 2}], {1, 2, k + 2}]}</span></div>
+<p class="small" style="margin:3pt 0 0">At <i>k</i> = 1 the middle item has count 0. The atom grouping cannot line that period up; the row-level extension recovers it.</p>
+</div>
+
+<div class="demo">
+<div class="lbl">D. A small pattern sitting across the boundary of a large one, the Set 3 pattern (2.5) <span class="pill old">46</span><span class="pill new">8</span></div>
+<div class="row"><span class="t">Input</span><span class="v">{1,1,2}, {}, {1,3}, {1,1,2}, {}, {1,2}, {3,4}, {1,1,2}, {}, {1,3}, {1,4}, {4,5}, … (74 rows)</span>
+<span class="t">reduce.py</span><span class="v">no block found: 46 leaves, repeated rows collapsed only</span>
+<span class="t">concat.py</span><span class="v new">{€(k..2)[{1, 1, 2}, {}, {1, 4 − k}], €(k..8)[{k + 2, k + 3}, {1, 1, 2}, {}, {1, k + 2}, €(k)[{1, k + 3}]]}</span></div>
+<p class="small" style="margin:3pt 0 0">The main block covers the period starting at <code>{3, 4}</code>, which Mathematica leaves outside its block, and the head is reduced separately into a two-period block.</p>
+</div>
+
+<div class="demo">
+<div class="lbl">E. An inner progression whose length and values grow as 2<sup>k</sup>, the Set 4 pattern <span class="pill old">38</span><span class="pill new">4</span></div>
+<div class="row"><span class="t">Input</span><span class="v">{1,2,3}, {3}×3, {1}, {1,2,3}, {3,4,5}, {5}×5, {1}, {1,4,5}, {1,5,6}, {1,6,7}, … (68 rows)</span>
+<span class="t">reduce.py</span><span class="v">no block found: 38 leaves</span>
+<span class="t">concat.py</span><span class="v new">{€(k..4)[{2^k − 1, 2^k, 2^k + 1}, €(2^k + 1)[{2^k + 1}], {1}, €(j..2^k − 1)[{1, 2^k + j − 1, 2^k + j}]]}</span></div>
+<p class="small" style="margin:3pt 0 0">This is the same expression Mathematica produces for the full Set 4.</p>
+</div>
+
+<div class="demo">
+<div class="lbl">F. No real pattern: both programs should leave it alone (2.6) <span class="pill old">4</span><span class="pill new">4</span></div>
+<div class="row"><span class="t">Input</span><span class="v">{30,30}, {1,31}×3, {5}, {2,9}</span>
+<span class="t">both</span><span class="v">{{30, 30}, €(3)[{1, 31}], {5}, {2, 9}}</span></div>
+<p class="small" style="margin:3pt 0 0">Without the two-point rule, <code>concat.py</code> would fit <code>59 − 29k</code> here.</p>
+</div>
+
+<h3><span class="n">3.1</span>Where both programs succeed</h3>
+<p>For balance: on simple, regular lists both programs find the structure. <code>concat.py</code> is never worse on the cases tested, and is sometimes smaller because it nests a progression inside a block:</p>
+<table>
+<thead><tr><th>Input</th><th><code>reduce.py</code></th><th><code>concat.py</code></th></tr></thead>
+<tbody>
+<tr><td><code>{16, 60+2i}</code>, i = 0…7</td><td><code>€(n1..8)[{16, 2·n1 + 58}]</code> (1)</td><td><code>€(k..8)[{16, 2k + 58}]</code> (1)</td></tr>
+<tr><td><code>{8,61}, {8,62}, {8,63}, {16,67}</code> four times</td><td><code>€(4)[{8, 61}, {8, 62}, {8, 63}, {16, 67}]</code> (4)</td><td><code>€(k..4)[€(j..3)[{8, j + 60}], {16, 67}]</code> (2)</td></tr>
+<tr><td><code>{k, 2k+1}</code> twice each, k = 1…8</td><td><code>€(2)[{1, 3}], €(n1..7)[€(2)[{n1+1, 2n1+3}]]</code> (2)</td><td><code>€(k..8)[€(2)[{k, 2k + 1}]]</code> (1)</td></tr>
+</tbody></table>
+
+<h2><span class="n">4</span>Why this is an upgrade, and what it costs</h2>
+<div class="two">
+<div class="old"><h4>reduce.py</h4>
+<p>Finds blocks only when every period has exactly the same shape, including every run having the same repeat count. Real sets from this project vary their repeat counts from period to period almost every time, so on all five reference sets it falls back to collapsing repeated rows.</p></div>
+<div class="new"><h4>concat.py</h4>
+<p>Finds blocks whose repeat counts, steps and values all change with <i>k</i>, including periods where something is missing or occurs once. It recovers the main block in every reference set, does as well as or better than Mathematica on all five, and stays lossless by the same expansion check.</p></div>
+</div>
+
+<p><b>Costs and limits</b>, stated plainly:</p>
+<ul>
+<li><b>Speed.</b> <code>concat.py</code> takes 3–11 s on the reference sets (463–943 rows); <code>reduce.py</code> takes under 0.1 s, largely because it finds nothing to fit. Mathematica took under 3 s on Sets 2–4, and about 4.5 minutes each on Sets 5 and 6.</li>
+<li><b>Nesting depth.</b> Blocks nest two levels: an outer block whose body holds rows, runs and arithmetic progressions. A body that contains a repeating group of several rows with its own index is not yet searched for.</li>
+<li><b>Formula family.</b> The formulas are those listed in Section 2, not everything Mathematica's <code>FindSequenceFunction</code> can find.</li>
+<li><b>No optimality guarantee.</b> Choosing the best block at each step, then reducing each side, is a heuristic. It is not a search for the smallest possible expression. The tie-break on "simpler formulas" is a readability judgement.</li>
+<li><b>Edge periods.</b> As agreed for this work, a partial period at the start or end of a set is left as plain rows and runs, not forced into the block.</li>
+</ul>
+
+<h2><span class="n">5</span>How the results were checked</h2>
+<ul>
+<li><b>Exact expansion.</b> Every result in this report was expanded and compared with its input. The test suite (<code>tests.py</code>, section 7b) checks this for all five reference sets and also fails if any result gets larger than the sizes above.</li>
+<li><b>Mathematica.</b> The <code>IndexedConcatenate[…]</code> form of each <code>concat.py</code> result for Sets 2–6 was loaded into Mathematica with <code>SSSiCv102.wl</code>. <code>ExpandAll</code> reproduced each original set exactly.</li>
+<li><b>Reproducing the baseline.</b> <code>ReduceSetList</code> was run through <code>wolframscript</code> on the same rows. On Sets 2–4 it reproduced the expressions recorded in the original notebooks exactly, including the index names.</li>
+<li><b>Random tests.</b> 300 lists: 150 random, and 150 generated from a random period with constant, linear, <i>k</i> and 2<sup>k</sup> counts plus random rows at both ends. No result failed to expand back, and none was larger than collapsing repeated rows. Of 100 generated lists in a separate run, 98 reduced to 12 leaves or fewer. The 2 others (32 and 36 rows) have not been diagnosed yet.</li>
+</ul>
+
+<h2><span class="n">A</span>Appendix: <code>concat.py</code> output on the reference sets</h2>
+<p class="small">Each expression expands to the listed number of rows exactly.</p>
+<pre><b>Set 2</b> (463 rows, 7 leaves)
+{{1}, {1, 2}, €(k..27)[€(2)[{k + 1}], {1, 1}, €(k - 1)[{1, 1, k + 2}], {1, 2, k + 2}], €(2)[{29}]}</pre>
+<pre><b>Set 3</b> (943 rows, 8 leaves)
+{{1, 1, 2}, {}, {1, 3}, €(k..40)[{1, 1, 2}, {}, {1, k + 1}, €(k - 1)[{1, k + 2}], {k + 2, k + 3}]}</pre>
+<pre><b>Set 4</b> (743 rows, 6 leaves; the same expression as Mathematica's)
+{€(k..7)[{2^k - 1, 2^k, 2^k + 1}, €(2^k + 1)[{2^k + 1}], {1}, €(j..2^k - 1)[{1, 2^k + j - 1, 2^k + j}]],
+ {255, 256, 257}, €(220)[{257}]}</pre>
+<pre><b>Set 5</b> (499 rows, 14 leaves)
+{{1, 1, 4}, {1, 1}, {1, 1, 2}, €(k..28)[{k + 1, k + 1}, €(k - 1)[{1, k + 2}], {k + 2, k + 3}, {1, 1, 2}],
+ {30, 30}, €(3)[{1, 31}], €(25)[{1}], {}, {1, 1, 2}, {}, €(2)[{1}]}</pre>
+<pre><b>Set 6</b> (499 rows, 16 leaves)
+{{1, 1}, {1}, {1, 3}, {1, 1}, {1}, €(k..27)[{1, k + 1}, €(k - 1)[{1, k + 2}], {k + 2, k + 3}, {1, 1}, {1}],
+ {1, 29}, €(5)[{1, 30}], €(22)[{1}], {}, {1, 1}, €(5)[{1}]}</pre>
+<p class="small">For comparison, Mathematica's <code>ReduceSetList</code> on Set 3 gives (13 leaves):<br>
+<code>{€²[{1,1,2}, {}, {1, 4−n$2}], {3,4}, {1,1,2}, {}, €²[{1, 2+n$1}], €<sup>38</sup>[{3+n$3, 4+n$3}, {1,1,2}, {}, {1, 3+n$3}, €<sup>1+n$3</sup>[{1, 4+n$3}]], {42,43}}</code></p>
+<p class="small">In the musIC app, the <b>Concatenate</b> page (<code>/concatenate</code>) runs <code>concat.py</code> on any pasted set and loads these reference sets for comparison.</p>
+
+</div>
+</body>
+</html>

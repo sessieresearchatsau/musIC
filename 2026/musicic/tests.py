@@ -102,6 +102,10 @@ for src, want in [
     ('RowBox[{"{", RowBox[{"{", RowBox[{FractionBox["11","8"], ",", "62"}], "}"}], "}"}]',
      "{{11/8,62}}"),
     ("[[32, 60], [24, 62]]", "{{32,60},{24,62}}"),
+    # rows pasted without the outer braces, as notebook output often is
+    ("{1}, {1, 2}, {}", "{{1},{1,2},{}}"),
+    # Mathematica's backslash line continuation inside a long output
+    ("{{1, 1}, {1, \\\n2}, {3}}", "{{1,1},{1,2},{3}}"),
 ]:
     check(f"parse {src[:34]}", to_mathematica(parse_set(src)), want)
 
@@ -176,6 +180,26 @@ for rows in ([(32, 60)] * 8,
     check(f"reduce lossless {len(rows)}", r.verified, True)
     check(f"reduce expands {len(rows)}",
           [tuple(x) for x in expand(r.tree)], [tuple(x) for x in rows])
+
+# 7b. The new reducer on the reference sets in docs/concatenation-examples.md:
+# always lossless, and never larger than its best result so far. Mathematica's
+# ReduceSetList gives 7, 13, 6, 120 and 141 leaves on the same rows.
+import re                                            # noqa: E402
+
+from musicic.core.concat import concatenate          # noqa: E402
+
+EXAMPLES = ("/Users/derekrenck/Documents/GitHub/musIC/2026/musicic/docs/"
+            "concatenation-examples.md")
+_doc = open(EXAMPLES).read()
+for n, cut, best in ((2, 463, 7), (3, None, 8), (4, None, 6),
+                     (5, None, 14), (6, None, 16)):
+    block = _doc.split(f"### {n}. Set {n}")[1].split("```")[1]
+    rows = [tuple(int(x) for x in re.findall(r"-?\d+", m))
+            for m in re.findall(r"\{([^{}]*)\}", block)][:cut]
+    r = concatenate(rows)
+    check(f"concat set {n} lossless", r.verified, True)
+    check(f"concat set {n} expands", [tuple(x) for x in expand(r.tree)], rows)
+    check(f"concat set {n} size <= {best}", r.size <= best, True)
 
 # 8. Set files: the path a transcribed picture takes into the app.
 SCORES = "/Users/derekrenck/Documents/GitHub/musIC/2026/musicic/scores/"

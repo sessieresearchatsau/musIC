@@ -25,6 +25,7 @@ Input syntax (ASCII alias IC for the € sign):
 from __future__ import annotations
 
 import re
+import threading
 from dataclasses import dataclass
 from fractions import Fraction
 
@@ -122,17 +123,34 @@ def _evaluate(value, env: dict):
     return value
 
 
+# An expression that would expand past this many rows -- or take this many
+# steps, as €(1000000000)[] would with nothing to show for it -- is stopped
+# with an error, so a typo in a count cannot freeze the app or an export.
+MAX_ROWS = 100_000
+_work = threading.local()
+
+
+def _step(n: int = 1) -> None:
+    _work.n = getattr(_work, "n", 0) + n
+    if _work.n > MAX_ROWS:
+        raise ICError(f"this expression expands to more than {MAX_ROWS:,} rows; "
+                      f"check its repeat counts and index ranges")
+
+
 def expand(node, env: dict | None = None) -> list:
     """Fully expand a tree, returning plain nested lists of numbers.
 
     A list expands elementwise, with any IC child splicing its rows in place --
     that is what makes the [] delimiters of the paper 'vanishing'.
     """
+    if env is None:                    # a fresh expansion: start counting again
+        _work.n = 0
     env = env or {}
 
     if isinstance(node, IC):
         out: list = []
         for b in _bindings(node.it, env):
+            _step()
             inner = {**env, **b}
             for a in node.args:
                 _emit(out, a, inner)
@@ -159,9 +177,11 @@ def _bindings(it: Iter, env: dict) -> list[dict]:
     notes that a 0 or negative end value is legal, and the subsequence is
     simply omitted."""
     stop = int(_evaluate(it.stop, env))
+    start = 1 if it.is_count else int(_evaluate(it.start, env))
+    if stop - start + 1 > MAX_ROWS:
+        _step(stop - start + 1)
     if it.is_count:
         return [{}] * max(0, stop)
-    start = int(_evaluate(it.start, env))
     # A named upper limit is in scope in the body, as n is under a sum sign.
     top = {sympy.Symbol(it.upper): stop} if it.upper else {}
     return [{**top, sympy.Symbol(it.var): i} for i in range(start, stop + 1)]
@@ -405,6 +425,7 @@ def spans(tree, limit: int = 3000) -> list[dict]:
     """
     out: list[dict] = []
     counter = [0]
+    _work.n = 0                    # walk() expands with indices bound: count afresh
 
     def walk(items, pos: int, depth: int, env: dict, path: str) -> int:
         for k, item in enumerate(items):
@@ -525,12 +546,13 @@ def _tex_leaf(v) -> str:
     return str(v)
 
 
-def render_latex(tree, colors: list[str] | None = None) -> str:
+def render_latex(tree, colors: list[str] | None = None, order: dict | None = None) -> str:
     """The expression as LaTeX math: € with its index under and its last value
     over, as the paper writes it, and sets in braces. Commas allow a line break,
     so a long level wraps instead of running off the page. With `colors`, each
-    € takes the colour of its block, in parse order (xcolor names or HTML hex)."""
-    order = _blocks_order(tree)
+    € takes the colour of its block, in parse order (xcolor names or HTML hex);
+    `order` (IC node id -> block number) overrides that order."""
+    order = _blocks_order(tree) if order is None else order
 
     def euro(node) -> str:
         sym = r"\text{\euro}"

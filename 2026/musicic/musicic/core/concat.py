@@ -32,6 +32,7 @@ Nothing is returned unless it expands back to the input exactly.
 """
 from __future__ import annotations
 
+import threading
 from dataclasses import dataclass
 from fractions import Fraction as F
 
@@ -47,6 +48,37 @@ J = sympy.Symbol("j")
 MAX_PERIOD = 64        # atoms in one period
 MAX_ROWS = 20000
 EXTEND_TOP = 24        # candidates taken to the row-level extension step
+
+
+# --------------------------------------------------------------------------
+# tracing: what the search tries, for anyone watching it run
+# --------------------------------------------------------------------------
+
+class Stopped(Exception):
+    """Raised from the trace callback to abandon a search part way."""
+
+
+_trace = threading.local()
+
+
+def _report(event: dict) -> None:
+    """Hand an event to the caller's callback, if it asked for them. Row
+    numbers are made absolute: the search works on slices of the rows."""
+    cb = getattr(_trace, "cb", None)
+    if cb is None:
+        return
+    base = _trace.base
+    for k in ("r0", "r1"):
+        if k in event:
+            event[k] += base
+    cb(event)
+
+
+def _tick() -> None:
+    """A chance to stop between reports: the callback gets None."""
+    cb = getattr(_trace, "cb", None)
+    if cb is not None:
+        cb(None)
 
 
 # --------------------------------------------------------------------------
@@ -73,13 +105,15 @@ def _models(loose: bool = False):
     predict a point it was not fitted on. `loose` drops that requirement, for
     deciding whether a block might still continue."""
     x = 0 if loose else 1
+    # polynomials first: 72, 71, 69 is 72 - k(k-1)/2 before it is 73 - 2^k/2
     yield ("1",), 0
     yield ("1", "k"), 0
-    for b in BASES:
-        yield ("1", b), x
     yield ("1", "k", "k2"), x
+    # the base of a power is picked to fit as well, so it needs a point more
     for b in BASES:
-        yield ("1", "k", b), x
+        yield ("1", b), x + 1
+    for b in BASES:
+        yield ("1", "k", b), x + 1
 
 
 @dataclass(frozen=True)
@@ -309,8 +343,18 @@ def _grow(atoms: list[Atom], s: int, p: int) -> int:
     return q
 
 
-def _body(atoms: list[Atom], s: int, p: int, q: int) -> Body | None:
-    """The formulas for q periods from atom s, each confirmed on all its points."""
+# A block of only two periods is taken when at most this share of its entries
+# move between them; the rest must stay exactly the same. Two points fit any
+# line, so a pair of periods that differ everywhere is a coincidence, not a
+# pattern -- but a phrase repeated with a note or two changed is the commonest
+# shape in music.
+TWO_PERIOD_MOVING = 1 / 4
+
+
+def _body(atoms: list[Atom], s: int, p: int, q: int, two: bool = False) -> Body | None:
+    """The formulas for q periods from atom s, each confirmed on all its points.
+    With `two` (and q = 2), lines through two points are allowed as long as
+    few entries move: see TWO_PERIOD_MOVING."""
     cols = _columns_for(atoms, s, p, loose=True)
     for t in range(q):
         for i in range(p):
@@ -325,8 +369,15 @@ def _body(atoms: list[Atom], s: int, p: int, q: int) -> Body | None:
                 return None
     # Two points fix any line, so a line through only two says nothing unless
     # it is the plain step the notebooks use (4 - n, 2 + n).
-    if any(len(c.pts) == 2 and not c.f.plain_line for c in every):
-        return None
+    loose = [c for c in every if len(c.pts) == 2 and not c.f.plain_line]
+    if loose:
+        if not two or q != 2:
+            return None
+        values = [c for row in ca for c in row if c.pts]
+        moving = [c for c in values if not c.f.is_const]
+        if any(not c.f.is_const for c in cn) or \
+                len(moving) > TWO_PERIOD_MOVING * len(values):
+            return None
     return Body([[c.f for c in row] for row in ca],
                 [[c.f for c in row] for row in cd],
                 [c.f for c in cn])
@@ -340,6 +391,7 @@ def _candidates(atoms: list[Atom]):
         for phase in range(p):
             s = phase
             while s + 2 * p <= m:
+                _tick()
                 q = _grow(atoms, s, p)
                 if q >= 2:
                     found.append(((q - 1) * p, s, p, q))
@@ -429,18 +481,26 @@ def _best_block(rows: list[Row]) -> Block | None:
     # A progression of two rows is barely a pattern and tends to pair rows
     # that only happen to differ evenly; the row-level extension still covers
     # a period whose progression is that short.
-    for prog_min in (3, None):
+    for pass_no, prog_min in enumerate((3, None), 1):
         atoms = segment(rows, prog_min)
         off = [0]
         for at in atoms:
             off.append(off[-1] + at.n)
         for _, s, p, q in _candidates(atoms)[:EXTEND_TOP]:
-            body = None
+            body, q0 = None, q
             while q >= 2 and (body := _body(atoms, s, p, q)) is None:
                 q -= 1          # the last period was only loosely fitted
+            if body is None and q0 >= 2:
+                q = 2           # a phrase stated twice, with a few notes moved
+                body = _body(atoms, s, p, 2, two=True)
             if body is None:
+                _report({"t": "try", "pass": pass_no, "r0": off[s],
+                         "r1": off[s + max(q, 2) * p], "p": p, "status": "nofit"})
                 continue
+            # what this candidate came to, over all its rotations, for the trace
+            seen: dict = {"status": "short", "r0": off[s], "r1": off[s + q * p], "q": q}
             for r in range(p):
+                _tick()
                 if r == 0:
                     lo, hi, r0, r1 = 1, q, off[s], off[s + q * p]
                 else:
@@ -451,14 +511,25 @@ def _best_block(rows: list[Row]) -> Block | None:
                 if hi - lo + 1 < 2:
                     continue
                 saving = _rle_leaves(rows[r0:r1]) - p
+                here = {"r0": r0, "r1": r1, "q": hi - lo + 1, "saving": saving}
                 if best is not None and saving < best.saving:
+                    if seen["status"] in ("short", "refit") or \
+                            (seen["status"] == "beaten" and saving > seen["saving"]):
+                        seen = {**here, "status": "beaten", "best": best.saving}
                     continue
                 rb = _rebase(body, r, lo, hi)
                 if rb is None:
+                    if seen["status"] == "short":
+                        seen = {**here, "status": "refit"}
                     continue
                 cand = Block(r0, r1, rb, hi - lo + 1, saving)
                 if best is None or cand.rank > best.rank:
                     best = cand
+                    seen = {**here, "status": "best", "rotation": r,
+                            "text": render(_block_tree(cand)).replace("**", "^")}
+                elif seen["status"] != "best":
+                    seen = {**here, "status": "beaten", "best": best.saving}
+            _report({"t": "try", "pass": pass_no, "p": p, **seen})
     return best if best is not None and best.saving > 0 else None
 
 
@@ -503,18 +574,26 @@ def _block_tree(block: Block) -> IC:
             _num(fa) if fd is None or (fd.is_const and fd.const() == 0)
             else sympy.expand(fa.sym() + fd.sym() * (J - 1))
             for fa, fd in zip(b.a[i], steps))
-        items.append(IC([row], Iter("j", 1, _num(n))))
-    return IC(items, Iter("k", 1, block.q))
+        items.append(IC([row], Iter("j", 1, _num(n), table=True)))
+    return IC(items, Iter("k", 1, block.q, table=True))
 
 
-def _reduce(rows: list[Row]) -> list:
+def _reduce(rows: list[Row], base: int = 0) -> list:
     if len(rows) < 2:
         return list(rows)
+    _trace.base = base
+    _trace.round = getattr(_trace, "round", 0) + 1
+    _report({"t": "round", "n": _trace.round, "r0": 0, "r1": len(rows)})
     block = _best_block(rows)
+    _trace.base = base
     if block is None:
+        _report({"t": "none", "r0": 0, "r1": len(rows)})
         return _rle_tree(rows)
-    return (_reduce(rows[:block.r0]) + [_block_tree(block)]
-            + _reduce(rows[block.r1:]))
+    tree = _block_tree(block)
+    _report({"t": "keep", "r0": block.r0, "r1": block.r1, "saving": block.saving,
+             "text": render(tree).replace("**", "^")})
+    return (_reduce(rows[:block.r0], base) + [tree]
+            + _reduce(rows[block.r1:], base + block.r1))
 
 
 def leaves(tree) -> int:
@@ -538,12 +617,22 @@ class Result:
         return leaves(self.tree)
 
 
-def concatenate(rows) -> Result:
-    """Reduce rows to nested indexed concatenations, losslessly."""
+def concatenate(rows, on_event=None) -> Result:
+    """Reduce rows to nested indexed concatenations, losslessly.
+
+    With `on_event`, each step of the search is reported as it happens: a
+    "round" for each stretch of rows searched, a "try" for each candidate
+    block (status best, beaten, nofit, short or refit), then "keep" or "none".
+    Rows are numbered from 0, r1 exclusive. Between events it is also called
+    with None, often, so that raising Stopped abandons the search promptly."""
     rows = [tuple(int(x) for x in r) for r in rows]
     if len(rows) > MAX_ROWS:
         return Result(_rle_tree(rows), rows, True)
-    tree = _reduce(rows)
+    _trace.cb, _trace.base, _trace.round = on_event, 0, 0
+    try:
+        tree = _reduce(rows)
+    finally:
+        _trace.cb = None
     ok = [tuple(x) for x in expand(tree)] == rows
     if not ok:                       # never hand back something wrong
         tree = _rle_tree(rows)

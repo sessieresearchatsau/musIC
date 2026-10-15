@@ -1,0 +1,926 @@
+{
+  ".claude/agents/icn/icn.py": {
+    "mtime": 1789499035.1637602,
+    "seen": 1792001244.2560902,
+    "ast_hash": "4d6879eb0761419e17b3378d5440298e",
+    "semantic_hash": "4d6879eb0761419e17b3378d5440298e"
+  },
+  ".vscode/extensions.json": {
+    "mtime": 1741369322.4349563,
+    "seen": 1792001244.256095,
+    "ast_hash": "67ecd9a6d1564dc74062239001dffd46",
+    "semantic_hash": "67ecd9a6d1564dc74062239001dffd46"
+  },
+  "2026/musicic/compare_reduce.py": {
+    "mtime": 1791914713.114903,
+    "seen": 1792001244.256097,
+    "ast_hash": "e2d29629f9d1433c1cf9f644f11334e2",
+    "semantic_hash": "e2d29629f9d1433c1cf9f644f11334e2"
+  },
+  "2026/musicic/compare_tests.py": {
+    "mtime": 1791318934.9219928,
+    "seen": 1792001244.256098,
+    "ast_hash": "78ef31c9f65438613e9ed75c438b2d32",
+    "semantic_hash": "78ef31c9f65438613e9ed75c438b2d32"
+  },
+  "2026/musicic/docs/networks/paper_forms.py": {
+    "mtime": 1791912252.1810615,
+    "seen": 1792001244.256098,
+    "ast_hash": "7fd4ed421279edfb27c22e752370f927",
+    "semantic_hash": "7fd4ed421279edfb27c22e752370f927"
+  },
+  "2026/musicic/docs/networks/rows.json": {
+    "mtime": 1791912232.6184793,
+    "seen": 1792001244.256099,
+    "ast_hash": "4b480dae30a14608b7c58b0af27b1b8d",
+    "semantic_hash": "4b480dae30a14608b7c58b0af27b1b8d"
+  },
+  "2026/musicic/docs/networks/stress_forms.py": {
+    "mtime": 1791914399.7313933,
+    "seen": 1792001244.2561002,
+    "ast_hash": "a900447e72dddf1880884cf1fc31a690",
+    "semantic_hash": "a900447e72dddf1880884cf1fc31a690"
+  },
+  "2026/musicic/musicic/__init__.py": {
+    "mtime": 1788377291.4024873,
+    "seen": 1792001244.2561011,
+    "ast_hash": "d41d8cd98f00b204e9800998ecf8427e",
+    "semantic_hash": "d41d8cd98f00b204e9800998ecf8427e"
+  },
+  "2026/musicic/musicic/__main__.py": {
+    "mtime": 1788377291.4000018,
+    "seen": 1792001244.2561011,
+    "ast_hash": "16c3141e61ccbce926da27ce2eca5874",
+    "semantic_hash": "16c3141e61ccbce926da27ce2eca5874"
+  },
+  "2026/musicic/musicic/core/__init__.py": {
+    "mtime": 1788377291.4027398,
+    "seen": 1792001244.2561018,
+    "ast_hash": "d41d8cd98f00b204e9800998ecf8427e",
+    "semantic_hash": "d41d8cd98f00b204e9800998ecf8427e"
+  },
+  "2026/musicic/musicic/core/concat.py": {
+    "mtime": 1791917913.290964,
+    "seen": 1792001244.2561028,
+    "ast_hash": "4ad7421f081c745045348c0c0885b49e",
+    "semantic_hash": "4ad7421f081c745045348c0c0885b49e"
+  },
+  "2026/musicic/musicic/core/encoders.py": {
+    "mtime": 1788386943.7282588,
+    "seen": 1792001244.256104,
+    "ast_hash": "a596991d344602688eb42522aed3dd2c",
+    "semantic_hash": "a596991d344602688eb42522aed3dd2c"
+  },
+  "2026/musicic/musicic/core/findseq.py": {
+    "mtime": 1788378573.8944123,
+    "seen": 1792001244.256105,
+    "ast_hash": "c6e7a5be5f545dc7677b68af60de4025",
+    "semantic_hash": "c6e7a5be5f545dc7677b68af60de4025"
+  },
+  "2026/musicic/musicic/core/ic.py": {
+    "mtime": 1791247090.314035,
+    "seen": 1792001244.256105,
+    "ast_hash": "b66e9167716bf21f3b087a2bb62f479a",
+    "semantic_hash": "b66e9167716bf21f3b087a2bb62f479a"
+  },
+  "2026/musicic/musicic/core/keysig.py": {
+    "mtime": 1788388636.7732284,
+    "seen": 1792001244.256106,
+    "ast_hash": "a9419f322ec579f0c7f9266db0c3460a",
+    "semantic_hash": "a9419f322ec579f0c7f9266db0c3460a"
+  },
+  "2026/musicic/musicic/core/levels.py": {
+    "mtime": 1791307202.2222688,
+    "seen": 1792001244.256106,
+    "ast_hash": "8e4ea1621da42b936778c375bfbcc11c",
+    "semantic_hash": "8e4ea1621da42b936778c375bfbcc11c"
+  },
+  "2026/musicic/musicic/core/metrics.py": {
+    "mtime": 1788376829.0203834,
+    "seen": 1792001244.256107,
+    "ast_hash": "2a00777945f68684893a868f02c82453",
+    "semantic_hash": "2a00777945f68684893a868f02c82453"
+  },
+  "2026/musicic/musicic/core/midi_in.py": {
+    "mtime": 1788376736.536755,
+    "seen": 1792001244.256108,
+    "ast_hash": "e9f7b1303c9f85d8f78b524cce4f1bbd",
+    "semantic_hash": "e9f7b1303c9f85d8f78b524cce4f1bbd"
+  },
+  "2026/musicic/musicic/core/midi_out.py": {
+    "mtime": 1788805092.643784,
+    "seen": 1792001244.256108,
+    "ast_hash": "c211102d2ee2ded99f80080716e00531",
+    "semantic_hash": "c211102d2ee2ded99f80080716e00531"
+  },
+  "2026/musicic/musicic/core/notebookfile.py": {
+    "mtime": 1791247137.3842442,
+    "seen": 1792001244.256109,
+    "ast_hash": "be46f1516ef1ad16cbcfacb7824715c1",
+    "semantic_hash": "be46f1516ef1ad16cbcfacb7824715c1"
+  },
+  "2026/musicic/musicic/core/notes.py": {
+    "mtime": 1788386943.728839,
+    "seen": 1792001244.256109,
+    "ast_hash": "44a1345fe69c4e47ad5aac57a25ae5ba",
+    "semantic_hash": "44a1345fe69c4e47ad5aac57a25ae5ba"
+  },
+  "2026/musicic/musicic/core/quantize.py": {
+    "mtime": 1788376736.5365057,
+    "seen": 1792001244.2561102,
+    "ast_hash": "4c20227be4143fab9a0eb2b8898e2aec",
+    "semantic_hash": "4c20227be4143fab9a0eb2b8898e2aec"
+  },
+  "2026/musicic/musicic/core/reduce.py": {
+    "mtime": 1788378714.7891996,
+    "seen": 1792001244.2561111,
+    "ast_hash": "a6be8cb738a3f90008b3467e32619b4a",
+    "semantic_hash": "a6be8cb738a3f90008b3467e32619b4a"
+  },
+  "2026/musicic/musicic/core/score.py": {
+    "mtime": 1788388687.87893,
+    "seen": 1792001244.256112,
+    "ast_hash": "bbb49199420a3afcce115864dc6dc071",
+    "semantic_hash": "bbb49199420a3afcce115864dc6dc071"
+  },
+  "2026/musicic/musicic/core/setfile.py": {
+    "mtime": 1788804967.110291,
+    "seen": 1792001244.256112,
+    "ast_hash": "393fdca82e5cbabb48fbb4bc8209054d",
+    "semantic_hash": "393fdca82e5cbabb48fbb4bc8209054d"
+  },
+  "2026/musicic/musicic/core/setfmt.py": {
+    "mtime": 1791207426.3139763,
+    "seen": 1792001244.2561128,
+    "ast_hash": "9eef59e5a78470e9af7ce98e52931faa",
+    "semantic_hash": "9eef59e5a78470e9af7ce98e52931faa"
+  },
+  "2026/musicic/musicic/server/__init__.py": {
+    "mtime": 1788377291.402797,
+    "seen": 1792001244.256114,
+    "ast_hash": "d41d8cd98f00b204e9800998ecf8427e",
+    "semantic_hash": "d41d8cd98f00b204e9800998ecf8427e"
+  },
+  "2026/musicic/musicic/server/app.py": {
+    "mtime": 1791307146.0179794,
+    "seen": 1792001244.256114,
+    "ast_hash": "aac341376e9282155176e58a6a444404",
+    "semantic_hash": "aac341376e9282155176e58a6a444404"
+  },
+  "2026/musicic/musicic/web/app.js": {
+    "mtime": 1790626673.4501748,
+    "seen": 1792001244.256115,
+    "ast_hash": "9251aa1c83bf79d5412273114871ed78",
+    "semantic_hash": "9251aa1c83bf79d5412273114871ed78"
+  },
+  "2026/musicic/musicic/web/concatenate.js": {
+    "mtime": 1791307202.221528,
+    "seen": 1792001244.256115,
+    "ast_hash": "340bdfa46ba99c368f12ed1baa760d60",
+    "semantic_hash": "340bdfa46ba99c368f12ed1baa760d60"
+  },
+  "2026/musicic/musicic/web/notebook.js": {
+    "mtime": 1791247137.3849533,
+    "seen": 1792001244.256116,
+    "ast_hash": "5c7c11af4112adaec763eada1a6b426e",
+    "semantic_hash": "5c7c11af4112adaec763eada1a6b426e"
+  },
+  "2026/musicic/musicic/web/shared.js": {
+    "mtime": 1790641183.871128,
+    "seen": 1792001244.256117,
+    "ast_hash": "31b9bad95068d679f2fd454c62e5c925",
+    "semantic_hash": "31b9bad95068d679f2fd454c62e5c925"
+  },
+  "2026/musicic/musicic/web/sheet.js": {
+    "mtime": 1790628954.8207297,
+    "seen": 1792001244.256117,
+    "ast_hash": "af8126d997599ba9510d7ba7f6f891de",
+    "semantic_hash": "af8126d997599ba9510d7ba7f6f891de"
+  },
+  "2026/musicic/musicic/web/vendor/vexflow.js": {
+    "mtime": 1788377623.5564382,
+    "seen": 1792001244.256118,
+    "ast_hash": "5ebe734af080538c31e51d891dadc921",
+    "semantic_hash": "5ebe734af080538c31e51d891dadc921"
+  },
+  "2026/musicic/network_tests.py": {
+    "mtime": 1791914655.8510299,
+    "seen": 1792001244.256118,
+    "ast_hash": "e7a88595e94f0a2cfa75ec5f47da43ee",
+    "semantic_hash": "e7a88595e94f0a2cfa75ec5f47da43ee"
+  },
+  "2026/musicic/pyproject.toml": {
+    "mtime": 1788376556.9340835,
+    "seen": 1792001244.256119,
+    "ast_hash": "9bca495f97e42728d1e61fc1b5a1f44d",
+    "semantic_hash": "9bca495f97e42728d1e61fc1b5a1f44d"
+  },
+  "2026/musicic/scores/happy-birthday-melody.music.json": {
+    "mtime": 1788804910.08504,
+    "seen": 1792001244.25612,
+    "ast_hash": "2ac9426fb014f04a57539bb57bd10f0b",
+    "semantic_hash": "2ac9426fb014f04a57539bb57bd10f0b"
+  },
+  "2026/musicic/scores/happy-birthday-piano.music.json": {
+    "mtime": 1788804941.4171977,
+    "seen": 1792001244.25612,
+    "ast_hash": "3318a6ebb224ccb7103f49a4c9b862c1",
+    "semantic_hash": "3318a6ebb224ccb7103f49a4c9b862c1"
+  },
+  "2026/musicic/tests.py": {
+    "mtime": 1791916330.3099976,
+    "seen": 1792001244.2561212,
+    "ast_hash": "6bd1943e01235e40a30e374e7318e8a2",
+    "semantic_hash": "6bd1943e01235e40a30e374e7318e8a2"
+  },
+  "2026/reference/RuleFlow-main/bin/ruleflow.bash": {
+    "mtime": 1788373805.9785323,
+    "seen": 1792001244.2561212,
+    "ast_hash": "20941e834464465574abc4a8bf4df850",
+    "semantic_hash": "20941e834464465574abc4a8bf4df850"
+  },
+  "2026/reference/RuleFlow-main/pyproject.toml": {
+    "mtime": 1788373805.9828677,
+    "seen": 1792001244.256122,
+    "ast_hash": "f1e8f1b3ef2885d651d6f1d4886f8a59",
+    "semantic_hash": "f1e8f1b3ef2885d651d6f1d4886f8a59"
+  },
+  "2026/reference/RuleFlow-main/src/core/__init__.py": {
+    "mtime": 1779051618.0,
+    "seen": 1792001244.2561228,
+    "ast_hash": "d41d8cd98f00b204e9800998ecf8427e",
+    "semantic_hash": "d41d8cd98f00b204e9800998ecf8427e"
+  },
+  "2026/reference/RuleFlow-main/src/core/engine.py": {
+    "mtime": 1788373805.9879797,
+    "seen": 1792001244.2561228,
+    "ast_hash": "d1e629f00831cd880d1e12f74f470968",
+    "semantic_hash": "d1e629f00831cd880d1e12f74f470968"
+  },
+  "2026/reference/RuleFlow-main/src/core/graph.py": {
+    "mtime": 1788373805.9883885,
+    "seen": 1792001244.256125,
+    "ast_hash": "bc361e3f6330d74ffede62346eae9b7f",
+    "semantic_hash": "bc361e3f6330d74ffede62346eae9b7f"
+  },
+  "2026/reference/RuleFlow-main/src/core/numlib.py": {
+    "mtime": 1788373805.9889984,
+    "seen": 1792001244.256125,
+    "ast_hash": "fc967be085379fb1b04ae847b32ff2c6",
+    "semantic_hash": "fc967be085379fb1b04ae847b32ff2c6"
+  },
+  "2026/reference/RuleFlow-main/src/core/prettier.py": {
+    "mtime": 1788373805.9893966,
+    "seen": 1792001244.256126,
+    "ast_hash": "9b2f9b35169ad7946758c5e951c3b1e6",
+    "semantic_hash": "9b2f9b35169ad7946758c5e951c3b1e6"
+  },
+  "2026/reference/RuleFlow-main/src/core/signals.py": {
+    "mtime": 1788373805.9903364,
+    "seen": 1792001244.2561269,
+    "ast_hash": "16034004e699b473018e2c7bb15cab88",
+    "semantic_hash": "16034004e699b473018e2c7bb15cab88"
+  },
+  "2026/reference/RuleFlow-main/src/core/vec.py": {
+    "mtime": 1788373805.9908326,
+    "seen": 1792001244.2561269,
+    "ast_hash": "32cdc2857cca75e5657c37ea647d7266",
+    "semantic_hash": "32cdc2857cca75e5657c37ea647d7266"
+  },
+  "2026/reference/RuleFlow-main/src/implementations/__init__.py": {
+    "mtime": 1788373805.9915433,
+    "seen": 1792001244.256128,
+    "ast_hash": "37b97f3216bd21b2bf005c7a759bf18e",
+    "semantic_hash": "37b97f3216bd21b2bf005c7a759bf18e"
+  },
+  "2026/reference/RuleFlow-main/src/implementations/sss.py": {
+    "mtime": 1788373805.9928036,
+    "seen": 1792001244.256128,
+    "ast_hash": "2f86777fc23d6393c62105e4d3319820",
+    "semantic_hash": "2f86777fc23d6393c62105e4d3319820"
+  },
+  "2026/reference/RuleFlow-main/src/integrations/__init__.py": {
+    "mtime": 1788373805.993271,
+    "seen": 1792001244.256129,
+    "ast_hash": "ac33436ac37a5e00517236457a9a4c3b",
+    "semantic_hash": "ac33436ac37a5e00517236457a9a4c3b"
+  },
+  "2026/reference/RuleFlow-main/src/integrations/enumerator.py": {
+    "mtime": 1788373805.994538,
+    "seen": 1792001244.25613,
+    "ast_hash": "be7a991e06308575bc3746439774e3ef",
+    "semantic_hash": "be7a991e06308575bc3746439774e3ef"
+  },
+  "2026/reference/RuleFlow-main/src/integrations/icat/__init__.py": {
+    "mtime": 1788373805.9951015,
+    "seen": 1792001244.25613,
+    "ast_hash": "fadc266190b9943d554e679a1448c2b9",
+    "semantic_hash": "fadc266190b9943d554e679a1448c2b9"
+  },
+  "2026/reference/RuleFlow-main/src/integrations/icat/core.py": {
+    "mtime": 1788373805.9954283,
+    "seen": 1792001244.2561312,
+    "ast_hash": "e5c409d430f2241573275feb9ecac699",
+    "semantic_hash": "e5c409d430f2241573275feb9ecac699"
+  },
+  "2026/reference/RuleFlow-main/src/lang/__init__.py": {
+    "mtime": 1788373805.9959297,
+    "seen": 1792001244.2561321,
+    "ast_hash": "ce6644f5a82ee500811416a0d7157ffa",
+    "semantic_hash": "ce6644f5a82ee500811416a0d7157ffa"
+  },
+  "2026/reference/RuleFlow-main/src/lang/implementation.py": {
+    "mtime": 1788373805.9987667,
+    "seen": 1792001244.2561321,
+    "ast_hash": "b06d1fcb678e03af6127eed079589d4c",
+    "semantic_hash": "b06d1fcb678e03af6127eed079589d4c"
+  },
+  "2026/reference/RuleFlow-main/src/lang/interpreter.py": {
+    "mtime": 1788373805.999111,
+    "seen": 1792001244.256133,
+    "ast_hash": "b38c5d8d594e0f60185542ea9e8d36a1",
+    "semantic_hash": "b38c5d8d594e0f60185542ea9e8d36a1"
+  },
+  "2026/reference/RuleFlow-main/src/lang/parser.py": {
+    "mtime": 1788373805.999571,
+    "seen": 1792001244.256133,
+    "ast_hash": "0bebf0e8c09e78cb020e0e68d39b3b5a",
+    "semantic_hash": "0bebf0e8c09e78cb020e0e68d39b3b5a"
+  },
+  "2026/reference/RuleFlow-main/src/lang/testing.py": {
+    "mtime": 1788373806.0001485,
+    "seen": 1792001244.2561338,
+    "ast_hash": "cd1eed75e696eba4fdc67f5b0133db94",
+    "semantic_hash": "cd1eed75e696eba4fdc67f5b0133db94"
+  },
+  "2026/reference/RuleFlow-main/src/lang/vs-code-extension/package.json": {
+    "mtime": 1788373806.0007036,
+    "seen": 1792001244.256135,
+    "ast_hash": "40c9c337a83098e0ac942a2bf5a51143",
+    "semantic_hash": "40c9c337a83098e0ac942a2bf5a51143"
+  },
+  "2026/reference/RuleFlow-main/src/lang/vs-code-extension/syntaxes/flowlang.tmLanguage.json": {
+    "mtime": 1788373806.0011911,
+    "seen": 1792001244.256135,
+    "ast_hash": "71687d7bcadae99e18b4ae9c753ed819",
+    "semantic_hash": "71687d7bcadae99e18b4ae9c753ed819"
+  },
+  "2026/reference/RuleFlow-main/src/studio-plugins/gephi/gephi-live.py": {
+    "mtime": 1779051618.0,
+    "seen": 1792001244.256136,
+    "ast_hash": "d41d8cd98f00b204e9800998ecf8427e",
+    "semantic_hash": "d41d8cd98f00b204e9800998ecf8427e"
+  },
+  "2026/reference/RuleFlow-main/src/studio-plugins/llm/_llm_module.py": {
+    "mtime": 1788373806.011408,
+    "seen": 1792001244.256137,
+    "ast_hash": "f6614837cbcdd7b97d214b8f9c3bf304",
+    "semantic_hash": "f6614837cbcdd7b97d214b8f9c3bf304"
+  },
+  "2026/reference/RuleFlow-main/src/studio-plugins/sessie/enum.py": {
+    "mtime": 1779051618.0,
+    "seen": 1792001244.256137,
+    "ast_hash": "d41d8cd98f00b204e9800998ecf8427e",
+    "semantic_hash": "d41d8cd98f00b204e9800998ecf8427e"
+  },
+  "2026/reference/RuleFlow-main/src/studio-plugins/tunes.py": {
+    "mtime": 1788373806.012463,
+    "seen": 1792001244.256138,
+    "ast_hash": "c7c7821884d9e934501b7cf32af024e8",
+    "semantic_hash": "c7c7821884d9e934501b7cf32af024e8"
+  },
+  "2026/reference/RuleFlow-main/src/studio/__init__.py": {
+    "mtime": 1779051618.0,
+    "seen": 1792001244.256138,
+    "ast_hash": "d41d8cd98f00b204e9800998ecf8427e",
+    "semantic_hash": "d41d8cd98f00b204e9800998ecf8427e"
+  },
+  "2026/reference/RuleFlow-main/src/studio/config.py": {
+    "mtime": 1788373806.0033493,
+    "seen": 1792001244.256139,
+    "ast_hash": "70006b9967e717eb223f89b25368b36f",
+    "semantic_hash": "70006b9967e717eb223f89b25368b36f"
+  },
+  "2026/reference/RuleFlow-main/src/studio/model.py": {
+    "mtime": 1788373806.003703,
+    "seen": 1792001244.25614,
+    "ast_hash": "05d41546882677f60def4062bdd7f736",
+    "semantic_hash": "05d41546882677f60def4062bdd7f736"
+  },
+  "2026/reference/RuleFlow-main/src/studio/stdplgns/analysis.py": {
+    "mtime": 1788373806.0061977,
+    "seen": 1792001244.25614,
+    "ast_hash": "ae4d8919b4638d3754a9ed795a61fc21",
+    "semantic_hash": "ae4d8919b4638d3754a9ed795a61fc21"
+  },
+  "2026/reference/RuleFlow-main/src/studio/stdplgns/explore.py": {
+    "mtime": 1788373806.0070739,
+    "seen": 1792001244.256141,
+    "ast_hash": "792f2510ee72f639bd315583075dd2e8",
+    "semantic_hash": "792f2510ee72f639bd315583075dd2e8"
+  },
+  "2026/reference/RuleFlow-main/src/studio/stdplgns/run.py": {
+    "mtime": 1788373806.0077586,
+    "seen": 1792001244.2561421,
+    "ast_hash": "c340992f8361b2226ec1ec22d7f07c2a",
+    "semantic_hash": "c340992f8361b2226ec1ec22d7f07c2a"
+  },
+  "2026/reference/RuleFlow-main/src/studio/ts-flow-lang/grammar.js": {
+    "mtime": 1788373806.0091007,
+    "seen": 1792001244.2561421,
+    "ast_hash": "00ea583cefd4b2b54a3f31d9e3f80e94",
+    "semantic_hash": "00ea583cefd4b2b54a3f31d9e3f80e94"
+  },
+  "2026/reference/RuleFlow-main/src/studio/ts-flow-lang/package.json": {
+    "mtime": 1788373806.0093355,
+    "seen": 1792001244.256143,
+    "ast_hash": "69b5b9322e4eaf9d341278ae32b043db",
+    "semantic_hash": "69b5b9322e4eaf9d341278ae32b043db"
+  },
+  "2026/reference/RuleFlow-main/src/studio/ts-flow-lang/tree-sitter.json": {
+    "mtime": 1788373806.009964,
+    "seen": 1792001244.2561438,
+    "ast_hash": "4f056c5abc24ac94cc56794f8f688c1e",
+    "semantic_hash": "4f056c5abc24ac94cc56794f8f688c1e"
+  },
+  "2026/reference/RuleFlow-main/src/studio/view.py": {
+    "mtime": 1788373806.0102346,
+    "seen": 1792001244.2561438,
+    "ast_hash": "f96a62e6f6ad846b1bd2a9ce7cd66296",
+    "semantic_hash": "f96a62e6f6ad846b1bd2a9ce7cd66296"
+  },
+  "2026/reference/RuleFlow-main/tests/example-studio-project/plugins/example.py": {
+    "mtime": 1788373806.014259,
+    "seen": 1792001244.256145,
+    "ast_hash": "0f3317afa15c07325a74c31b7e4446c0",
+    "semantic_hash": "0f3317afa15c07325a74c31b7e4446c0"
+  },
+  "2026/reference/RuleFlow-main/tests/game_of_life.py": {
+    "mtime": 1788373806.015382,
+    "seen": 1792001244.256145,
+    "ast_hash": "78017e949ef5e43406bc13d52a3294f6",
+    "semantic_hash": "78017e949ef5e43406bc13d52a3294f6"
+  },
+  "2026/reference/RuleFlow-main/tests/lang/test.py": {
+    "mtime": 1788373806.0166633,
+    "seen": 1792001244.256146,
+    "ast_hash": "ec5b175c723b9c00ce362e63e0c35487",
+    "semantic_hash": "ec5b175c723b9c00ce362e63e0c35487"
+  },
+  "2026/reference/RuleFlow-main/tests/test0.py": {
+    "mtime": 1788373806.0169883,
+    "seen": 1792001244.256147,
+    "ast_hash": "284a49a13811c0d5ef1707f5a9492d43",
+    "semantic_hash": "284a49a13811c0d5ef1707f5a9492d43"
+  },
+  "2026/reference/RuleFlow-main/tests/vec/profile.py": {
+    "mtime": 1788373806.017513,
+    "seen": 1792001244.256147,
+    "ast_hash": "33d0cd8ddd1fe63578c4aac8da966d92",
+    "semantic_hash": "33d0cd8ddd1fe63578c4aac8da966d92"
+  },
+  "2026/reference/RuleFlow-main/tests/vec/tests.py": {
+    "mtime": 1788373806.0178463,
+    "seen": 1792001244.2561479,
+    "ast_hash": "3909df3acc42ab5e36a468586cda9d82",
+    "semantic_hash": "3909df3acc42ab5e36a468586cda9d82"
+  },
+  "Archive/midi2txt.py": {
+    "mtime": 1739831197.0772452,
+    "seen": 1792001244.256149,
+    "ast_hash": "0bfe036bcdb23eda6b64f1bf9893b157",
+    "semantic_hash": "0bfe036bcdb23eda6b64f1bf9893b157"
+  },
+  "Archive/midi2txt2.py": {
+    "mtime": 1739855554.1278512,
+    "seen": 1792001244.256149,
+    "ast_hash": "bcebb648295e1f62b10fa03f6ff898fe",
+    "semantic_hash": "bcebb648295e1f62b10fa03f6ff898fe"
+  },
+  "Archive/midi2txt3.py": {
+    "mtime": 1739858774.425291,
+    "seen": 1792001244.25615,
+    "ast_hash": "16ead9eca87402113e66ea2e738b6df4",
+    "semantic_hash": "16ead9eca87402113e66ea2e738b6df4"
+  },
+  "Archive/midi2txt4.py": {
+    "mtime": 1739858979.6247969,
+    "seen": 1792001244.256151,
+    "ast_hash": "373b756030740ede3ec5f82cd5d1cb8c",
+    "semantic_hash": "373b756030740ede3ec5f82cd5d1cb8c"
+  },
+  "Archive/midi2txt5.py": {
+    "mtime": 1739890627.6489217,
+    "seen": 1792001244.256151,
+    "ast_hash": "80ac38c8a3ee1271d859815bb2697433",
+    "semantic_hash": "80ac38c8a3ee1271d859815bb2697433"
+  },
+  "Archive/midi2txtV1-1.py": {
+    "mtime": 1740168288.9876633,
+    "seen": 1792001244.256153,
+    "ast_hash": "08ac5a31f1773d8b6fdc7a22284d2c41",
+    "semantic_hash": "08ac5a31f1773d8b6fdc7a22284d2c41"
+  },
+  "Archive/midi2txtV1.py": {
+    "mtime": 1739900057.5480695,
+    "seen": 1792001244.256153,
+    "ast_hash": "08ac5a31f1773d8b6fdc7a22284d2c41",
+    "semantic_hash": "08ac5a31f1773d8b6fdc7a22284d2c41"
+  },
+  "archive 2/midi2txtV2.py": {
+    "mtime": 1740627906.4001937,
+    "seen": 1792001244.256154,
+    "ast_hash": "54a66aabffa669e2d291d62c606f5775",
+    "semantic_hash": "54a66aabffa669e2d291d62c606f5775"
+  },
+  "archive 2/midi2txtV3.py": {
+    "mtime": 1740632896.9412048,
+    "seen": 1792001244.2561548,
+    "ast_hash": "c58958882ed73fdf20c3fee06bd7ae88",
+    "semantic_hash": "c58958882ed73fdf20c3fee06bd7ae88"
+  },
+  "archive 2/midi2txtV4.py": {
+    "mtime": 1741372503.7059028,
+    "seen": 1792001244.2561548,
+    "ast_hash": "7abf00cbc18cf0a692bbdb4286d9f3a5",
+    "semantic_hash": "7abf00cbc18cf0a692bbdb4286d9f3a5"
+  },
+  ".claude/agents/icn-reducer.md": {
+    "mtime": 1789497487.7405117,
+    "seen": 1792001244.256156,
+    "ast_hash": "7ff1d93b92e7b28d30b9a01f95a911fe",
+    "semantic_hash": "7ff1d93b92e7b28d30b9a01f95a911fe"
+  },
+  "2026/musicic/README.md": {
+    "mtime": 1791246144.516406,
+    "seen": 1792001244.256157,
+    "ast_hash": "6180b81a462a611672f9d31125144a56",
+    "semantic_hash": "6180b81a462a611672f9d31125144a56"
+  },
+  "2026/musicic/docs/concat-vs-reduce.html": {
+    "mtime": 1791225043.4615667,
+    "seen": 1792001244.256157,
+    "ast_hash": "92464c924f24263ca4f0e3627cf80d22",
+    "semantic_hash": "92464c924f24263ca4f0e3627cf80d22"
+  },
+  "2026/musicic/docs/concatenation-examples.md": {
+    "mtime": 1791160110.010537,
+    "seen": 1792001244.2561579,
+    "ast_hash": "750855ad2aec3c1e812cd2dec40fb0e7",
+    "semantic_hash": "750855ad2aec3c1e812cd2dec40fb0e7"
+  },
+  "2026/musicic/docs/networks/README.md": {
+    "mtime": 1791916322.3128421,
+    "seen": 1792001244.256159,
+    "ast_hash": "fa252e2e1c40ab4c9a2c87d47d223a3a",
+    "semantic_hash": "fa252e2e1c40ab4c9a2c87d47d223a3a"
+  },
+  "2026/musicic/docs/transcribing.md": {
+    "mtime": 1788805026.6026304,
+    "seen": 1792001244.256159,
+    "ast_hash": "2421aa7be3883a5d42e548a5495a4494",
+    "semantic_hash": "2421aa7be3883a5d42e548a5495a4494"
+  },
+  "2026/musicic/musicic/web/index.html": {
+    "mtime": 1791207703.1747503,
+    "seen": 1792001244.25616,
+    "ast_hash": "43ca428d50f305b25c91dc1b7783c239",
+    "semantic_hash": "43ca428d50f305b25c91dc1b7783c239"
+  },
+  "2026/musicic/notebooks/from-ic.md": {
+    "mtime": 1790639255.03582,
+    "seen": 1792001244.256161,
+    "ast_hash": "ea0b6fbcfec4ad76347afe1870518089",
+    "semantic_hash": "ea0b6fbcfec4ad76347afe1870518089"
+  },
+  "2026/musicic/notebooks/happy-birthday-to-you-melody.md": {
+    "mtime": 1791317116.8960123,
+    "seen": 1792001244.256161,
+    "ast_hash": "58d39a02297255bb78c32250b52b4198",
+    "semantic_hash": "58d39a02297255bb78c32250b52b4198"
+  },
+  "2026/musicic/scores/README.md": {
+    "mtime": 1788805026.6031692,
+    "seen": 1792001244.2561622,
+    "ast_hash": "ca2f38fd30680e44e720fafe4884439d",
+    "semantic_hash": "ca2f38fd30680e44e720fafe4884439d"
+  },
+  "2026/reference/RuleFlow-main/LICENSE.txt": {
+    "mtime": 1788373805.9768152,
+    "seen": 1792001244.2561631,
+    "ast_hash": "2095811d3dac62a17339e6596be1df87",
+    "semantic_hash": "2095811d3dac62a17339e6596be1df87"
+  },
+  "2026/reference/RuleFlow-main/README.md": {
+    "mtime": 1788373805.9773238,
+    "seen": 1792001244.2561631,
+    "ast_hash": "abdb0d43cb060fb03426bb2824fe6bdd",
+    "semantic_hash": "abdb0d43cb060fb03426bb2824fe6bdd"
+  },
+  "2026/reference/RuleFlow-main/docs/README.md": {
+    "mtime": 1788373805.9821043,
+    "seen": 1792001244.256164,
+    "ast_hash": "752a2602c66ac3b35fff1c654ee0f121",
+    "semantic_hash": "752a2602c66ac3b35fff1c654ee0f121"
+  },
+  "2026/reference/RuleFlow-main/src/studio-plugins/README.md": {
+    "mtime": 1788373806.0106716,
+    "seen": 1792001244.256164,
+    "ast_hash": "ed011c1d792a63962e1441315a519f04",
+    "semantic_hash": "ed011c1d792a63962e1441315a519f04"
+  },
+  "2026/reference/RuleFlow-main/src/studio-plugins/plugin_dev_guide.md": {
+    "mtime": 1788373806.0117092,
+    "seen": 1792001244.256165,
+    "ast_hash": "397fc821a7ac852f1485b94b04f1c6b6",
+    "semantic_hash": "397fc821a7ac852f1485b94b04f1c6b6"
+  },
+  "2026/reference/RuleFlow-main/src/studio/ts-flow-lang/README.md": {
+    "mtime": 1788373806.0088377,
+    "seen": 1792001244.256166,
+    "ast_hash": "6314e12e21e810c058cc33fe5120ff12",
+    "semantic_hash": "6314e12e21e810c058cc33fe5120ff12"
+  },
+  "2026/reference/RuleFlow-main/tests/TODO.md": {
+    "mtime": 1788373806.0128715,
+    "seen": 1792001244.256166,
+    "ast_hash": "60817d65e6a79b5089c179394b970e00",
+    "semantic_hash": "60817d65e6a79b5089c179394b970e00"
+  },
+  "Archive/doremifa1.txt": {
+    "mtime": 1739860148.60562,
+    "seen": 1792001244.256167,
+    "ast_hash": "141ebf2ac308d04c7079c7cea5a94499",
+    "semantic_hash": "141ebf2ac308d04c7079c7cea5a94499"
+  },
+  "Archive/experiment1-trial.txt": {
+    "mtime": 1740162649.8181508,
+    "seen": 1792001244.256168,
+    "ast_hash": "33cac6bc43e8e9646d93f1a4389bf91e",
+    "semantic_hash": "33cac6bc43e8e9646d93f1a4389bf91e"
+  },
+  "Archive/jjtw2alpha.txt": {
+    "mtime": 1739892820.469069,
+    "seen": 1792001244.256168,
+    "ast_hash": "c2845ba904b07a35eb6f6011f8fee813",
+    "semantic_hash": "c2845ba904b07a35eb6f6011f8fee813"
+  },
+  "Archive/jjtw3alpha.txt": {
+    "mtime": 1739900086.754131,
+    "seen": 1792001244.2561688,
+    "ast_hash": "9ce4a82a71c19f410cce2f1b36588f2c",
+    "semantic_hash": "9ce4a82a71c19f410cce2f1b36588f2c"
+  },
+  "Archive/jttw2.txt": {
+    "mtime": 1739855556.6414719,
+    "seen": 1792001244.2561688,
+    "ast_hash": "739a2414cab97f87fe498417eb379b41",
+    "semantic_hash": "739a2414cab97f87fe498417eb379b41"
+  },
+  "Archive/jttw3.txt": {
+    "mtime": 1739858598.1668713,
+    "seen": 1792001244.25617,
+    "ast_hash": "679855aa5e2a7f73934659e40fd18e1c",
+    "semantic_hash": "679855aa5e2a7f73934659e40fd18e1c"
+  },
+  "Archive/jttw4.txt": {
+    "mtime": 1739858652.0402818,
+    "seen": 1792001244.256171,
+    "ast_hash": "739a2414cab97f87fe498417eb379b41",
+    "semantic_hash": "739a2414cab97f87fe498417eb379b41"
+  },
+  "Archive/jttw4alpha.txt": {
+    "mtime": 1740165483.9707768,
+    "seen": 1792001244.256171,
+    "ast_hash": "3114490f3b077e01556b567baed716b9",
+    "semantic_hash": "3114490f3b077e01556b567baed716b9"
+  },
+  "Archive/jttw6.txt": {
+    "mtime": 1739858780.7153757,
+    "seen": 1792001244.256172,
+    "ast_hash": "5590c95c3accb3f6c972c61ccfc0bbf9",
+    "semantic_hash": "5590c95c3accb3f6c972c61ccfc0bbf9"
+  },
+  "Archive/jttw7.txt": {
+    "mtime": 1739858994.978202,
+    "seen": 1792001244.2561731,
+    "ast_hash": "a235a07a17a7184dccb5283c5587d67e",
+    "semantic_hash": "a235a07a17a7184dccb5283c5587d67e"
+  },
+  "Archive/jttw8.txt": {
+    "mtime": 1739890651.0454586,
+    "seen": 1792001244.2561731,
+    "ast_hash": "3e8c182fd6b3a095e3baf096e1606457",
+    "semantic_hash": "3e8c182fd6b3a095e3baf096e1606457"
+  },
+  "Archive/supermariobrostheme.txt": {
+    "mtime": 1739859430.9384763,
+    "seen": 1792001244.256174,
+    "ast_hash": "630c44a962d1f6adaf8644f8914c7a04",
+    "semantic_hash": "630c44a962d1f6adaf8644f8914c7a04"
+  },
+  "Archive/test.txt": {
+    "mtime": 1739828794.5383663,
+    "seen": 1792001244.256174,
+    "ast_hash": "c1717256c7c3eee386e366d1cad2791f",
+    "semantic_hash": "c1717256c7c3eee386e366d1cad2791f"
+  },
+  "Archive/test2.txt": {
+    "mtime": 1739829396.5889747,
+    "seen": 1792001244.256175,
+    "ast_hash": "cab853f9b46b92a7e3da960015acbafb",
+    "semantic_hash": "cab853f9b46b92a7e3da960015acbafb"
+  },
+  "archive 2/Experiments/txt/experiment1-1.txt": {
+    "mtime": 1740165383.9572399,
+    "seen": 1792001244.2561762,
+    "ast_hash": "9339c41b4b3477ea19d911d4f4fee5c5",
+    "semantic_hash": "9339c41b4b3477ea19d911d4f4fee5c5"
+  },
+  "archive 2/Experiments/txt/experiment1.txt": {
+    "mtime": 1740163262.3946815,
+    "seen": 1792001244.2561762,
+    "ast_hash": "868decbb22161825da168e2a55a9853b",
+    "semantic_hash": "868decbb22161825da168e2a55a9853b"
+  },
+  "archive 2/FelizNavidad1.txt": {
+    "mtime": 1745005633.7528396,
+    "seen": 1792001244.256177,
+    "ast_hash": "324f6d3d2585fa035a0fdb8aa4ad6ece",
+    "semantic_hash": "324f6d3d2585fa035a0fdb8aa4ad6ece"
+  },
+  "archive 2/doremifa.txt": {
+    "mtime": 1746798191.2620156,
+    "seen": 1792001244.256178,
+    "ast_hash": "8c72e7eda64c2e5d51c9f05f93b09518",
+    "semantic_hash": "8c72e7eda64c2e5d51c9f05f93b09518"
+  },
+  "archive 2/experiment1-2.txt": {
+    "mtime": 1740632905.0162783,
+    "seen": 1792001244.256178,
+    "ast_hash": "091d2088b9cbaca974c03f0daa1fa200",
+    "semantic_hash": "091d2088b9cbaca974c03f0daa1fa200"
+  },
+  "archive 2/experiment1-trial3.txt": {
+    "mtime": 1741654307.3579268,
+    "seen": 1792001244.2561789,
+    "ast_hash": "4dade85c32fef7540461f0d0c37306d6",
+    "semantic_hash": "4dade85c32fef7540461f0d0c37306d6"
+  },
+  "archive 2/experiment2.txt": {
+    "mtime": 1740495885.2634835,
+    "seen": 1792001244.25618,
+    "ast_hash": "9413416bc4cdf32beb34c03fa30388b5",
+    "semantic_hash": "9413416bc4cdf32beb34c03fa30388b5"
+  },
+  "archive 2/experiment3.txt": {
+    "mtime": 1741703002.8717225,
+    "seen": 1792001244.25618,
+    "ast_hash": "0a6a9e9a2d227deec2ad062c5d1251c7",
+    "semantic_hash": "0a6a9e9a2d227deec2ad062c5d1251c7"
+  },
+  "archive 2/experiment4.txt": {
+    "mtime": 1741703595.127653,
+    "seen": 1792001244.256181,
+    "ast_hash": "eaf886a697472c19e22dea9cb66d06db",
+    "semantic_hash": "eaf886a697472c19e22dea9cb66d06db"
+  },
+  "archive 2/fur-elise.txt": {
+    "mtime": 1747409506.944584,
+    "seen": 1792001244.256181,
+    "ast_hash": "d06d05e38e16e428e3d2fd3982085673",
+    "semantic_hash": "d06d05e38e16e428e3d2fd3982085673"
+  },
+  "archive 2/happy-birthday-to-you.txt": {
+    "mtime": 1743519424.8356094,
+    "seen": 1792001244.256182,
+    "ast_hash": "ea73ab0b0814dafe50e000454ac509a1",
+    "semantic_hash": "ea73ab0b0814dafe50e000454ac509a1"
+  },
+  "archive 2/happybirthdayinC.txt": {
+    "mtime": 1744687689.2026546,
+    "seen": 1792001244.2561831,
+    "ast_hash": "7474f40d5f5e7bcfb245d76c4761604b",
+    "semantic_hash": "7474f40d5f5e7bcfb245d76c4761604b"
+  },
+  "archive 2/happybirthdayinC2.txt": {
+    "mtime": 1744688165.624254,
+    "seen": 1792001244.2561831,
+    "ast_hash": "13774f5d3afb492940776657f64d5584",
+    "semantic_hash": "13774f5d3afb492940776657f64d5584"
+  },
+  "archive 2/happybirthdayinC4.txt": {
+    "mtime": 1744993370.0527332,
+    "seen": 1792001244.256184,
+    "ast_hash": "63f2cd09e6863e79d8c6b0939f6a4ef1",
+    "semantic_hash": "63f2cd09e6863e79d8c6b0939f6a4ef1"
+  },
+  "archive 2/joy_to_the_world-flute.txt": {
+    "mtime": 1742913416.6365905,
+    "seen": 1792001244.256184,
+    "ast_hash": "0208abc7aec43e718d870945c29b81e3",
+    "semantic_hash": "0208abc7aec43e718d870945c29b81e3"
+  },
+  "archive 2/joy_to_the_world.txt": {
+    "mtime": 1743519390.1289666,
+    "seen": 1792001244.256185,
+    "ast_hash": "e10a42e18442a5d58c7073feb24fd553",
+    "semantic_hash": "e10a42e18442a5d58c7073feb24fd553"
+  },
+  "archive 2/zelda-great-fairy-fountain.txt": {
+    "mtime": 1747237945.6636937,
+    "seen": 1792001244.256186,
+    "ast_hash": "c0b025a2da9fbb8b7289272acaf2c9e6",
+    "semantic_hash": "c0b025a2da9fbb8b7289272acaf2c9e6"
+  },
+  "draftpaper.md": {
+    "mtime": 1789499721.3650324,
+    "seen": 1792001244.256186,
+    "ast_hash": "8dbed7318d99aa6e33725a403349d2f6",
+    "semantic_hash": "8dbed7318d99aa6e33725a403349d2f6"
+  },
+  "2026/complete experiments/Happy Birthday to You.pdf": {
+    "mtime": 1791246397.5517824,
+    "seen": 1792001244.256187,
+    "ast_hash": "80dab2678dbae09efa2ed7ea808d4504",
+    "semantic_hash": "80dab2678dbae09efa2ed7ea808d4504"
+  },
+  "2026/musicic/docs/concat-vs-reduce.pdf": {
+    "mtime": 1791225044.627449,
+    "seen": 1792001244.256188,
+    "ast_hash": "617520c47a57ce35347270a4cf055a8d",
+    "semantic_hash": "617520c47a57ce35347270a4cf055a8d"
+  },
+  "2026/reference/ICN paper.pdf": {
+    "mtime": 1788373084.0413957,
+    "seen": 1792001244.256188,
+    "ast_hash": "1980446eb21481cf60b77d0e2ac84254",
+    "semantic_hash": "1980446eb21481cf60b77d0e2ac84254"
+  },
+  "archive 2/Experiments/midi/experiment1-trial1.pdf": {
+    "mtime": 1740162601.5475318,
+    "seen": 1792001244.2561889,
+    "ast_hash": "e2ef32cac3b62141aa93432fb0938b86",
+    "semantic_hash": "e2ef32cac3b62141aa93432fb0938b86"
+  },
+  "archive 2/Experiments/midi/experiment1.pdf": {
+    "mtime": 1740162138.2191536,
+    "seen": 1792001244.25619,
+    "ast_hash": "bbd28bba0dba4da16316b5b06a68f082",
+    "semantic_hash": "bbd28bba0dba4da16316b5b06a68f082"
+  },
+  "archive 2/Experiments/sheets/Zelda - Ocarina of Time - Great Fairy Fountain.pdf": {
+    "mtime": 1747246189.6890764,
+    "seen": 1792001244.25619,
+    "ast_hash": "24dead96c04eae670836b4ffb02a9b19",
+    "semantic_hash": "24dead96c04eae670836b4ffb02a9b19"
+  },
+  "archive 2/experiment1-set.pdf": {
+    "mtime": 1741372709.6444619,
+    "seen": 1792001244.256191,
+    "ast_hash": "36c585c3870a3100ae574397c1dbf035",
+    "semantic_hash": "36c585c3870a3100ae574397c1dbf035"
+  },
+  "2026/music sheets/happy birthday.png": {
+    "mtime": 1788803455.8359754,
+    "seen": 1792001244.256191,
+    "ast_hash": "384388a13aa8441a881794acbb75cae4",
+    "semantic_hash": "384388a13aa8441a881794acbb75cae4"
+  },
+  "archive 2/presentation/Zelda - Ocarina of Time - Great Fairy Fountain.mp3": {
+    "mtime": 1764896548.5229332,
+    "seen": 1792001244.256192,
+    "ast_hash": "8513656a46ce3dbb39cbfc6980a60c11",
+    "semantic_hash": "8513656a46ce3dbb39cbfc6980a60c11"
+  },
+  "archive 2/presentation/experiment1.mp3": {
+    "mtime": 1764886505.892369,
+    "seen": 1792001244.256193,
+    "ast_hash": "901dccc8f14599ac8c9e3fb3057a6daa",
+    "semantic_hash": "901dccc8f14599ac8c9e3fb3057a6daa"
+  },
+  "archive 2/presentation/happybirthdayinC.mp3": {
+    "mtime": 1764896446.1840549,
+    "seen": 1792001244.256193,
+    "ast_hash": "de183a8ac093cad281cdfd81ed339ff0",
+    "semantic_hash": "de183a8ac093cad281cdfd81ed339ff0"
+  },
+  "archive 2/presentation/joy-to-the-world.mp3": {
+    "mtime": 1764871245.7652626,
+    "seen": 1792001244.256194,
+    "ast_hash": "8ad4d2dc87a397e9dff609b82d2f1123",
+    "semantic_hash": "8ad4d2dc87a397e9dff609b82d2f1123"
+  },
+  "archive 2/presentation/noterange-sound.mp3": {
+    "mtime": 1764870261.2243657,
+    "seen": 1792001244.256194,
+    "ast_hash": "74df85da7637e03479c7abc9939a45a7",
+    "semantic_hash": "74df85da7637e03479c7abc9939a45a7"
+  },
+  "archive 2/presentation/timings.mp3": {
+    "mtime": 1764870663.246911,
+    "seen": 1792001244.256195,
+    "ast_hash": "c268709cb3dde8a1258d0b54842900d1",
+    "semantic_hash": "c268709cb3dde8a1258d0b54842900d1"
+  }
+}

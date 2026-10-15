@@ -28,17 +28,38 @@ The steps:
 4. Keep the block that saves the most, reindex it to run from k = 1, and
    reduce the rows before and after it the same way.
 
-Nothing is returned unless it expands back to the input exactly.
+That finds one level of blocks over atoms. The networks of the ICN paper
+(Indexed-Concatenation-Notation-Extended.2.nb, sections 2, 7 and 8) need
+blocks of blocks, so a token layer then looks for more (see "tokens" below):
+
+5. Cut the rows into tokens three ways -- the items of the result of 1-4,
+   exactly repeated groups of rows (€k[{1,1},{1,2k}] for one k), and pieces
+   that each start with one kind of row, reduced on their own -- and look for
+   periods over the tokens as 2-3 do over atoms: every count, limit and
+   coefficient is a column fitted in a new outer index, and the periods are
+   extended at the row level, which absorbs the first periods where an inner
+   block has a count of 0 or 1.
+6. Search the body of every block again, at every depth (€(j,1,4)[...] in
+   Fig. 3's body, €2[{1,2},€2[{}]] in Fig. 5(e)), and pair stretches that
+   differ only by extra pieces, written under €(m) for m = 0, 1 (Fig. 4(b)).
+7. Write each index from where its body reads simplest, and a run of equal
+   numbers inside a row as one (€(j,k,6)[{j}], {1,€3[3]}).
+
+Of all these forms the one with the fewest leaves, then the fewest numbers
+written, is kept. Nothing is returned unless it expands back to the input
+exactly.
 """
 from __future__ import annotations
 
+import functools
+import re
 import threading
 from dataclasses import dataclass
 from fractions import Fraction as F
 
 import sympy
 
-from .ic import IC, Iter, expand, render
+from .ic import IC, Iter, Seq, expand, render
 
 Row = tuple
 
@@ -120,8 +141,40 @@ def _models(loose: bool = False):
 class Formula:
     terms: tuple            # ((basis, coefficient), ...)
 
-    def __call__(self, k: int) -> F:
-        return sum((c * _basis_value(b, k) for b, c in self.terms), F(0))
+    def __post_init__(self):
+        # integer coefficients, when they all are: evaluated without Fractions
+        ints = None
+        if all(c.denominator == 1 for _, c in self.terms):
+            ints = tuple((b, int(c)) for b, c in self.terms)
+        object.__setattr__(self, "_ints", ints)
+
+    def __call__(self, k: int) -> F | int:
+        # called millions of times while blocks grow: plain int arithmetic
+        # whenever it can be (an int compares and computes like a Fraction)
+        ints = self._ints
+        if ints is not None and k >= 0:
+            total = 0
+            for b, c in ints:
+                if b == "1":
+                    total += c
+                elif b == "k":
+                    total += c * k
+                elif b == "k2":
+                    total += c * k * k
+                else:
+                    total += c * b ** k
+            return total
+        total = F(0)
+        for b, c in self.terms:
+            if b == "1":
+                total += c
+            elif b == "k":
+                total += c * k
+            elif b == "k2":
+                total += c * (k * k)
+            else:
+                total += c * (b ** k if k >= 0 else F(1, b ** -k))
+        return total
 
     def sym(self, var=K):
         out = sympy.Integer(0)
@@ -180,6 +233,13 @@ def fit(pts: list[tuple[int, F]], loose: bool = False) -> Formula | None:
     """The simplest model through every (k, value) point, or None."""
     if not pts:
         return None
+    return _fit(tuple(pts), loose)
+
+
+@functools.lru_cache(maxsize=1 << 18)
+def _fit(pts: tuple, loose: bool) -> Formula | None:
+    # The search refits the same few columns over and over -- every phase of
+    # every period length grows through them again -- so the answers are kept.
     for basis, extra in _models(loose):
         if len(pts) < len(basis) + extra:
             continue
@@ -202,7 +262,6 @@ class Column:
     def add(self, k: int, v) -> bool:
         if v is None:
             return True
-        v = F(v)
         self.pts.append((k, v))
         if self.f is not None and self.f(k) == v:
             return True
@@ -330,6 +389,11 @@ def _grow(atoms: list[Atom], s: int, p: int) -> int:
     """How many whole periods from atom s share widths and could still be
     fitted. Loose: a formula that needs one more period to be confirmed does
     not stop the growth; _body confirms it afterwards."""
+    # The first period always fits (one point is a constant), so when the
+    # second does not line up by widths the answer is 1 without fitting.
+    if s + 2 * p <= len(atoms) and any(
+            atoms[s + p + i].width != atoms[s + i].width for i in range(p)):
+        return 1
     cols = _columns_for(atoms, s, p, loose=True)
     w = cols[3]
     q = 0
@@ -602,6 +666,856 @@ def leaves(tree) -> int:
     return sum(leaves(x.args) if isinstance(x, IC) else 1 for x in tree)
 
 
+def written(tree) -> int:
+    """Numbers and index names written down, iterators included: the second
+    measure of size, deciding between forms with the same leaves."""
+    return len(re.findall(r"\d+|[A-Za-z]\w*", render(tree)))
+
+
+# --------------------------------------------------------------------------
+# tokens: rows and blocks as items whose numbers can vary
+# --------------------------------------------------------------------------
+#
+# The search above lines up atoms -- a row, a run, a progression. The networks
+# of the ICN paper need more: a period may hold a block whose body is several
+# rows (Fig. 6(b), €k[{1,1},{1,2k}]), or a block of blocks (Fig. 6(d),
+# €n[€(i,1,n)[€i[...]]]), and a block's body may itself repeat (Fig. 3,
+# €(k,1,4)[€n[{1}], {1,5n+5+k}]). A token is any item -- a row, or a block
+# nested to any depth -- with each number written as a sum of terms c * key.
+# A key is a product of factors index^e and b^index (the empty product is 1)
+# and c is rational. Tokens with the same keys in the same places have the
+# same *shape*; their coefficients are the *parameters*, and periods of tokens
+# are fitted parameter by parameter, exactly as periods of atoms are above.
+#
+# Inside tokens an index is named by its depth -- _v0 for a block at the top,
+# _v1 inside it -- so equal blocks are equal tokens wherever they sit. Letters
+# are given only when the tree is written out.
+
+ONE_KEY = ()
+NAMES = "kjimnpqrst"         # written index names, outermost first
+TOKEN_PERIOD = 32            # tokens in one period
+TWO_PERIOD_MOVING_BODY = 1 / 2
+
+
+@dataclass(frozen=True)
+class TRow:
+    entries: tuple          # one entry per number: ((key, c), ...), key () first
+
+
+@dataclass(frozen=True)
+class TRep:
+    var: str | None         # None: a plain repeat count
+    start: tuple            # entries, in the indices of enclosing blocks
+    stop: tuple
+    body: tuple             # tokens
+
+
+def _const(c) -> tuple:
+    return ((ONE_KEY, F(c)),)
+
+
+E1 = _const(1)
+
+
+def _norm(terms: dict) -> tuple:
+    """An entry from {key: c}: key () always first, zero terms dropped."""
+    one = terms.pop(ONE_KEY, F(0))
+    rest = sorted(((k, c) for k, c in terms.items() if c != 0), key=repr)
+    return ((ONE_KEY, one),) + tuple(rest)
+
+
+def _kmul(a: tuple, b: tuple) -> tuple:
+    """The product of two keys, like factors merged."""
+    pw: dict = {}
+    ex: dict = {}
+    for f in a + b:
+        if f[0] == "p":
+            pw[f[1]] = pw.get(f[1], 0) + f[2]
+        else:
+            ex[f[2]] = ex.get(f[2], 1) * f[1]
+    return tuple(sorted([("p", v, e) for v, e in pw.items()]
+                        + [("x", b_, v) for v, b_ in ex.items()], key=repr))
+
+
+def _entry(v, scope: dict) -> tuple | None:
+    """A number, or a sympy expression in the indices of `scope` (written
+    name -> depth name), as an entry; None for a form tokens cannot hold."""
+    if isinstance(v, (int, F)):
+        return _const(v)
+    if isinstance(v, sympy.Basic) and v.is_Rational:
+        return _const(F(int(v.p), int(v.q)))
+    if not isinstance(v, sympy.Basic):
+        return None
+    terms: dict = {}
+    for term in sympy.Add.make_args(sympy.expand(v)):
+        c, key = F(1), ()
+        for f in sympy.Mul.make_args(term):
+            if f.is_Rational:
+                c *= F(int(f.p), int(f.q))
+            elif f.is_Symbol and f.name in scope:
+                key = _kmul(key, (("p", scope[f.name], 1),))
+            elif f.is_Pow and f.base.is_Symbol and f.base.name in scope \
+                    and f.exp.is_Integer and f.exp > 0:
+                key = _kmul(key, (("p", scope[f.base.name], int(f.exp)),))
+            elif f.is_Pow and f.base.is_Integer and f.base > 1:
+                b = int(f.base)
+                for t in sympy.Add.make_args(sympy.expand(f.exp)):
+                    if t.is_Integer:
+                        c *= F(b) ** int(t)
+                        continue
+                    cc, s = t.as_coeff_Mul()
+                    if not (s.is_Symbol and s.name in scope and cc.is_Integer and cc > 0):
+                        return None
+                    key = _kmul(key, (("x", b ** int(cc), scope[s.name]),))
+            else:
+                return None
+        terms[key] = terms.get(key, F(0)) + c
+    return _norm(terms)
+
+
+def _ev(entry: tuple, env: dict):
+    """The value of an entry with the indices bound (an int or a Fraction)."""
+    total = 0
+    for key, c in entry:
+        v = 1
+        for f in key:
+            x = env[f[1] if f[0] == "p" else f[2]]
+            if f[0] == "p":
+                v *= x ** f[2]
+            else:
+                v *= f[1] ** x if x >= 0 else F(1, f[1] ** -x)
+        total += c * v
+    return total
+
+
+def _xp(tok, env: dict, out: list, budget: int) -> bool:
+    """Append the rows a token expands to; False if it is not valid there (a
+    number that is not whole) or would pass `budget` rows."""
+    if isinstance(tok, TRow):
+        vals = [_ev(e, env) for e in tok.entries]
+        if any(getattr(v, "denominator", 1) != 1 for v in vals):
+            return False
+        out.append(tuple(int(v) for v in vals))
+        return len(out) <= budget
+    a, b = _ev(tok.start, env), _ev(tok.stop, env)
+    if getattr(a, "denominator", 1) != 1 or getattr(b, "denominator", 1) != 1:
+        return False
+    if b - a + 1 > budget:
+        return False
+    for i in range(int(a), int(b) + 1):
+        inner = env if tok.var is None else {**env, tok.var: i}
+        for t in tok.body:
+            if not _xp(t, inner, out, budget):
+                return False
+    return True
+
+
+def _tl(tok) -> int:
+    """Leaves of a token, as `leaves` counts them."""
+    return 1 if isinstance(tok, TRow) else sum(_tl(t) for t in tok.body)
+
+
+_SIG: dict = {}
+
+
+def _sig(tok):
+    """(shape, parameters, which parameters are row entries)."""
+    got = _SIG.get(tok)
+    if got is None:
+        params: list = []
+        mask: list = []
+
+        def ent(e, in_row):
+            params.extend(c for _, c in e)
+            mask.extend([in_row] * len(e))
+            return tuple(k for k, _ in e)
+
+        def walk(t):
+            if isinstance(t, TRow):
+                return ("r",) + tuple(ent(e, True) for e in t.entries)
+            return ("c", t.var, ent(t.start, False), ent(t.stop, False),
+                    tuple(walk(b) for b in t.body))
+
+        got = (walk(tok), tuple(params), tuple(mask))
+        if len(_SIG) > 200_000:
+            _SIG.clear()
+        _SIG[tok] = got
+    return got
+
+
+def _basis_key(b, var: str) -> tuple:
+    return {"1": (), "k": (("p", var, 1),), "k2": (("p", var, 2),)}.get(
+        b, (("x", b, var),) if not isinstance(b, str) else None)
+
+
+def _unsig(shape, vals, var: str | None = None):
+    """A token of this shape with these parameters. Given `var`, the values
+    are Formulas in that index and the token is the symbolic template."""
+    def ent(keys):
+        if var is None:
+            return tuple((k, next(vals)) for k in keys)
+        terms: dict = {}
+        for k in keys:
+            for b, c in next(vals).terms:
+                nk = _kmul(k, _basis_key(b, var))
+                terms[nk] = terms.get(nk, F(0)) + c
+        return _norm(terms)
+
+    def walk(s):
+        if s[0] == "r":
+            return TRow(tuple(ent(keys) for keys in s[1:]))
+        _, v, ks, ke, body = s
+        start, stop = ent(ks), ent(ke)
+        return TRep(v, start, stop, tuple(walk(b) for b in body))
+
+    return walk(shape)
+
+
+def _mapvars(tok, f):
+    """The token with every index name passed through f."""
+    def key(k):
+        return tuple(sorted(((x[0], f(x[1]), x[2]) if x[0] == "p" else (x[0], x[1], f(x[2]))
+                            for x in k), key=repr))
+
+    def ent(e):
+        return _norm({key(k): c for k, c in e})
+
+    if isinstance(tok, TRow):
+        return TRow(tuple(ent(e) for e in tok.entries))
+    return TRep(f(tok.var) if tok.var else None, ent(tok.start), ent(tok.stop),
+                tuple(_mapvars(t, f) for t in tok.body))
+
+
+def _shift(tok, d0: int):
+    """Move a token one level deeper: index _vd becomes _v(d+1) for d >= d0."""
+    def f(name):
+        if name.startswith("_v") and int(name[2:]) >= d0:
+            return f"_v{int(name[2:]) + 1}"
+        return name
+    return _mapvars(tok, f)
+
+
+def _uses(tok, var: str) -> bool:
+    def ent(e):
+        return any(var in (x[1], x[2]) for k, _ in e for x in k)
+    if isinstance(tok, TRow):
+        return any(ent(e) for e in tok.entries)
+    return ent(tok.start) or ent(tok.stop) or any(_uses(t, var) for t in tok.body)
+
+
+def _from_tree(item, depth: int = 0, scope: dict | None = None):
+    """A tree item (row or IC) as a token, or None if it holds a form tokens
+    cannot (a row inside a row, an index in an exponent's base...)."""
+    scope = scope or {}
+    if isinstance(item, IC):
+        it = item.it
+        inner = dict(scope)
+        if it.is_count:
+            var, start = None, E1
+        else:
+            var = f"_v{depth}"
+            inner[it.var] = var
+            start = _entry(it.start, scope)
+        stop = _entry(it.stop, scope)
+        body = [_from_tree(a, depth + 1, inner) for a in item.args]
+        if start is None or stop is None or any(b is None for b in body):
+            return None
+        return TRep(var, start, stop, tuple(body))
+    if isinstance(item, (list, tuple)) and not isinstance(item, Seq):
+        entries = [_entry(x, scope) for x in item]
+        return None if any(e is None for e in entries) else TRow(tuple(entries))
+    return None
+
+
+def _expr(entry: tuple, names: dict):
+    out = sympy.Integer(0)
+    for key, c in entry:
+        term = sympy.Rational(c.numerator, c.denominator)
+        for f in key:
+            if f[0] == "p":
+                term *= sympy.Symbol(names[f[1]]) ** f[2]
+            else:
+                term *= sympy.Integer(f[1]) ** sympy.Symbol(names[f[2]])
+        out += term
+    return int(out) if out.is_Integer else _shortest(out)
+
+
+def _shortest(e):
+    """The expression written the shortest way: as it is, factored, or with
+    the terms in each set of indices factored apart -- k(k+1)/2 + j rather
+    than k^2/2 + k/2 + j, as the paper writes Fig. 6(d)."""
+    def size(x):
+        return len(re.findall(r"\d+|[A-Za-z]\w*", str(x)))
+    groups: dict = {}
+    for t in sympy.Add.make_args(e):
+        groups.setdefault(frozenset(t.free_symbols), []).append(t)
+    split = sympy.Add(*[sympy.factor(sympy.Add(*ts)) for ts in groups.values()])
+    return min((e, sympy.factor(e), split), key=size)
+
+
+def _to_tree(tok, names: dict | None = None, level: int = 0):
+    """A token written out as a tree item, its indices named k, j, i, ...
+    outermost first. A block whose index is not used is a plain repeat."""
+    names = names or {}
+    if isinstance(tok, TRow):
+        return tuple(_expr(e, names) for e in tok.entries)
+    if tok.var is None or not any(_uses(t, tok.var) for t in tok.body):
+        n = _expr(tok.stop, names)
+        if tok.var is not None:
+            n = sympy.expand(n - _expr(tok.start, names) + 1)
+            n = int(n) if n.is_Integer else n
+        return IC([_to_tree(t, names, level) for t in tok.body], Iter(None, 1, n))
+    name = NAMES[level] if level < len(NAMES) else f"k{level}"
+    inner = {**names, tok.var: name}
+    return IC([_to_tree(t, inner, level + 1) for t in tok.body],
+              Iter(name, _expr(tok.start, names), _expr(tok.stop, names), table=True))
+
+
+def _atom_tokens(rows: list[Row], prog_min: int | None) -> list:
+    """Rows as tokens: runs, and progressions when prog_min is given."""
+    out: list = []
+    for at in segment(rows, prog_min):
+        row = TRow(tuple(_const(x) for x in at.a))
+        if at.n == 1:
+            out.append(row)
+        elif not any(at.d):
+            out.append(TRep(None, E1, _const(at.n), (row,)))
+        else:
+            ent = tuple(_norm({(): F(a - d), (("p", "_v0", 1),): F(d)})
+                        for a, d in zip(at.a, at.d))
+            out.append(TRep("_v0", E1, _const(at.n), (TRow(ent),)))
+    return out
+
+
+def _tandem(toks: list, depth: int = 0) -> list:
+    """Exactly repeated groups of tokens as plain repeats, the group saving
+    the most first, then the rest on either side the same way."""
+    m = len(toks)
+    if m < 2:
+        return toks
+    ids: dict = {}
+    seq = [ids.setdefault(t, len(ids)) for t in toks]
+    lv = [_tl(t) for t in toks]
+    best = None
+    for p in range(1, min(TOKEN_PERIOD, m // 2) + 1):
+        _tick()
+        for s in range(m - 2 * p + 1):
+            if seq[s] != seq[s + p] or seq[s:s + p] != seq[s + p:s + 2 * p]:
+                continue
+            c = 2
+            while s + (c + 1) * p <= m and seq[s + c * p:s + (c + 1) * p] == seq[s:s + p]:
+                c += 1
+            sav = (c - 1) * sum(lv[s:s + p])
+            if best is None or sav > best[0]:
+                best = (sav, s, p, c)
+    if best is None:
+        return toks
+    _, s, p, c = best
+    group = _tandem([_shift(t, depth) for t in toks[s:s + p]], depth + 1)
+    return (_tandem(toks[:s], depth) + [TRep(None, E1, _const(c), tuple(group))]
+            + _tandem(toks[s + c * p:], depth))
+
+
+# --------------------------------------------------------------------------
+# periodic blocks over tokens
+# --------------------------------------------------------------------------
+
+@dataclass
+class TBlock:
+    i0: int                 # tokens covered (as found, before extension)
+    i1: int
+    r0: int                 # rows covered, after extension (rows mode)
+    r1: int
+    tok: TRep
+    saving: int
+    cost: int
+
+    @property
+    def rank(self):
+        return (self.saving, -self.cost)
+
+
+def _tgrow(sigs, s: int, p: int) -> int:
+    """Whole periods of p tokens from s with one shape per position whose
+    parameters can still be fitted (loosely: _tblock confirms them)."""
+    m = len(sigs)
+    if s + 2 * p <= m and any(sigs[s + p + i][0] != sigs[s + i][0] for i in range(p)):
+        return 1
+    cols = [[Column(True) for _ in sigs[s + i][1]] for i in range(p)]
+    q = 0
+    while s + (q + 1) * p <= m:
+        base = s + q * p
+        if any(sigs[base + i][0] != sigs[s + i][0] for i in range(p)):
+            break
+        if not all(c.add(q + 1, v) for i in range(p)
+                   for c, v in zip(cols[i], sigs[base + i][1])):
+            break
+        q += 1
+    return q
+
+
+def _tfit(sigs, s: int, p: int, q: int):
+    out = []
+    for i in range(p):
+        fs = []
+        for j in range(len(sigs[s + i][1])):
+            f = fit([(t + 1, sigs[s + t * p + i][1][j]) for t in range(q)], loose=True)
+            if f is None:
+                return None
+            fs.append(f)
+        out.append(fs)
+    return out
+
+
+def _order(p: int, r: int, t: int):
+    """(position, period) of virtual period t of a body rotated by r."""
+    return [(i, t - 1) for i in range(p - r, p)] + [(i, t) for i in range(p - r)]
+
+
+def _tperiod_rows(shapes, fs, r: int, t: int, budget: int):
+    out: list = []
+    for i, k in _order(len(shapes), r, t):
+        tok = _unsig(shapes[i], iter([f(k) for f in fs[i]]))
+        if not _xp(tok, {}, out, budget):
+            return None
+    return out
+
+
+def _tperiod_toks(shapes, fs, t: int):
+    return [_unsig(shapes[i], iter([f(t) for f in fs[i]])) for i in range(len(shapes))]
+
+
+def _two_ok(fl, masks, share: float, plain_ok: bool) -> bool:
+    """Two periods are a block only if every count stays put and few entries
+    move (see TWO_PERIOD_MOVING). Over rows the plain steps of +-1 are always
+    fine, as in _body; inside a body they count as moving too, or a body's
+    {2,2,2},{1,3,3} would become {3-k,k+1,k+1}."""
+    flat = [(f, m) for fs, ms in zip(fl, masks) for f, m in zip(fs, ms)]
+    if plain_ok and all(f.plain_line for f, _ in flat):
+        return True
+    if any(not f.is_const for f, m in flat if not m):
+        return False
+    values = [f for f, m in flat if m]
+    return sum(not f.is_const for f in values) <= share * len(values)
+
+
+def _tblock(toks: list, depth: int, rows=None, offs=None) -> TBlock | None:
+    """The periodic block over tokens saving the most. With rows, candidates
+    are extended at the row level (any rotation) and saving is counted
+    against runs of the rows; without, periods are matched as equal tokens."""
+    m = len(toks)
+    if m < 4:
+        return None
+    sigs = [_sig(t) for t in toks]
+    lv = [_tl(t) for t in toks]
+    found = []
+    for p in range(1, min(TOKEN_PERIOD, m // 2) + 1):
+        for phase in range(p):
+            s = phase
+            while s + 2 * p <= m:
+                _tick()
+                q = _tgrow(sigs, s, p)
+                if q >= 2:
+                    found.append((sum(lv[s:s + q * p]) - sum(lv[s:s + p]), s, p, q))
+                s += max(1, q - 1) * p
+    found.sort(key=lambda c: (-c[0], c[2]))
+    best: TBlock | None = None
+    for _, s, p, q in found[:EXTEND_TOP]:
+        fs = None
+        while q >= 2 and (fs := _tfit(sigs, s, p, q)) is None:
+            q -= 1
+        if fs is None:
+            continue
+        shapes = [sigs[s + i][0] for i in range(p)]
+        masks = [sigs[s + i][2] for i in range(p)]
+        for r in (range(p) if rows is not None else (0,)):
+            _tick()
+            if rows is not None:
+                if r == 0:
+                    lo, hi, r0, r1 = 1, q, offs[s], offs[s + q * p]
+                else:
+                    lo, hi, r0, r1 = 2, q, offs[s + p - r], offs[s + q * p - r]
+                for _ in range(len(rows)):
+                    got = _tperiod_rows(shapes, fs, r, lo - 1, r0)
+                    if not got or rows[r0 - len(got):r0] != got:
+                        break
+                    lo, r0 = lo - 1, r0 - len(got)
+                for _ in range(len(rows)):
+                    got = _tperiod_rows(shapes, fs, r, hi + 1, len(rows) - r1)
+                    if not got or rows[r1:r1 + len(got)] != got:
+                        break
+                    hi, r1 = hi + 1, r1 + len(got)
+                i0, i1 = s, s + q * p
+            else:
+                lo, hi, i0, i1 = 1, q, s, s + q * p
+                while i0 - p >= 0 and _tperiod_toks(shapes, fs, lo - 1) == toks[i0 - p:i0]:
+                    lo, i0 = lo - 1, i0 - p
+                while i1 + p <= m and _tperiod_toks(shapes, fs, hi + 1) == toks[i1:i1 + p]:
+                    hi, i1 = hi + 1, i1 + p
+                r0 = r1 = 0
+            Q = hi - lo + 1
+            if Q < 2:
+                continue
+            # refit so the index runs 1..Q, each formula confirmed on its points
+            order = _order(p, r, 0)
+            fl, ml = [], []
+            for i, shift in order:
+                row = [fit([(k, f(k + lo - 1 + shift)) for k in range(1, Q + 1)]) for f in fs[i]]
+                if any(g is None for g in row):
+                    break
+                fl.append(row)
+                ml.append(masks[i])
+            else:
+                # rows, and the top level matched as tokens, keep the rule of
+                # _body; inside a body a little more may move (Fig. 1's
+                # {2,2},{2,4} is €(j,1,2)[{2,2j}] in the paper)
+                if Q == 2 and not (_two_ok(fl, ml, TWO_PERIOD_MOVING, True)
+                                   if rows is not None or depth == 0
+                                   else _two_ok(fl, ml, TWO_PERIOD_MOVING_BODY, False)):
+                    continue
+                body = tuple(_unsig(shapes[i], iter(row), "_new")
+                             for (i, _), row in zip(order, fl))
+                body = tuple(_mapvars(_shift(b, depth),
+                                      lambda v: f"_v{depth}" if v == "_new" else v)
+                             for b in body)
+                var = f"_v{depth}" if any(_uses(b, f"_v{depth}") for b in body) else None
+                tok = TRep(var, E1, _const(Q), body)
+                if rows is not None:
+                    saving = _rle_leaves(rows[r0:r1]) - _tl(tok)
+                else:
+                    saving = sum(lv[i0:i1]) - _tl(tok)
+                cost = sum(f.cost for row in fl for f in row)
+                cand = TBlock(i0, i1, r0, r1, tok, saving, cost)
+                if saving > 0 and (best is None or cand.rank > best.rank):
+                    best = cand
+    return best
+
+
+def _tcount(tok) -> int:
+    out: list = []
+    _xp(tok, {}, out, MAX_ROWS)
+    return len(out)
+
+
+def _lift(rows: list[Row], toks: list) -> list:
+    """Blocks over the tokens of `rows`, the best first, then the rows on
+    either side the same way (re-cut into tokens where a block's extension
+    took part of one)."""
+    if len(toks) < 4:
+        return toks
+    offs = [0]
+    for t in toks:
+        offs.append(offs[-1] + _tcount(t))
+    b = _tblock(toks, 0, rows, offs)
+    if b is None:
+        return toks
+    li = max(i for i in range(len(toks) + 1) if offs[i] <= b.r0)
+    ri = min(i for i in range(len(toks) + 1) if offs[i] >= b.r1)
+    left = toks[:li] + _atom_tokens(rows[offs[li]:b.r0], None)
+    right = _atom_tokens(rows[b.r1:offs[ri]], None) + toks[ri:]
+    return (_lift(rows[:b.r0], left) + [b.tok]
+            + _lift(rows[b.r1:], right))
+
+
+def _squeeze(toks: list, depth: int = 0, top: bool = True) -> list:
+    """Blocks inside the bodies of blocks, at every depth: periods of the
+    body's tokens, matched as tokens (the body's numbers may be formulas),
+    and -- below the top -- pairs of stretches that differ by optional pieces
+    (_gapped). The body of a repeat of one (a piece of _cut_tokens, spliced
+    out when written) counts as the top."""
+    toks = [_squeeze_one(t, depth, top) for t in toks]
+    while True:
+        found = [b for b in (_tblock(toks, depth),
+                             None if top else _gapped(toks, depth)) if b is not None]
+        if not found:
+            return toks
+        b = max(found, key=lambda x: x.rank)
+        toks = toks[:b.i0] + [_squeeze_one(b.tok, depth, top)] + toks[b.i1:]
+
+
+# Most pieces an optional run may hold, and at least how many pieces the two
+# stretches must share around it.
+GAP_MAX = 4
+GAP_CORE = 3
+GAP_SPAN = 16           # most pieces the two stretches share
+
+
+def _gapped(toks: list, depth: int) -> TBlock | None:
+    """Two neighbouring stretches that line up position by position once a
+    run of extra pieces in one of them is left out, written as one body over
+    an index with two values, the extra pieces under a count of 0 and 1 --
+    Fig. 4(b) of the paper, made by hand there:
+
+        €(m,0,1)[{1,2,3}, {2m+3n+1,2m+3n+2}, ..., €(m)[{1,2}, {1,3n+6}], {3n+2,3n+3}]
+
+    The pieces both stretches share are fitted as for any two periods (the
+    same _two_ok rule); the extra pieces are written once, as they are."""
+    m = len(toks)
+    # _squeeze calls this only inside a body, as in the paper: both stretches
+    # then sit in every period of the block around them. At the top level two
+    # stretches sharing a few rows and nothing else were paired around whole
+    # blocks, and the search was slow on long rows.
+    if m < 2 * GAP_CORE + 1:
+        return None
+    sigs = [_sig(t) for t in toks]
+    lv = [_tl(t) for t in toks]
+    best: TBlock | None = None
+    for s in range(m):
+        # Such a block saves exactly the leaves of the stretch it no longer
+        # writes twice, wherever the gap is: longest first, and nothing is
+        # fitted that cannot beat the best so far.
+        for a in range(min(GAP_SPAN, (m - s) // 2), GAP_CORE - 1, -1):
+            for g in range(1, GAP_MAX + 1):
+                _tick()
+                for first_long in (False, True):
+                    la, lb = (a + g, a) if first_long else (a, a + g)
+                    if s + la + lb > m:
+                        continue
+                    short = list(range(s + la, s + la + lb)) if first_long else list(range(s, s + la))
+                    if best is not None and sum(lv[x] for x in short) <= best.saving:
+                        continue
+                    long_ = list(range(s, s + la)) if first_long else list(range(s + la, s + la + lb))
+                    # the gap sits where the shapes stop matching from the
+                    # front and start matching from the back
+                    front = 0
+                    while front < a and sigs[short[front]][0] == sigs[long_[front]][0]:
+                        front += 1
+                    back = 0
+                    while back < a and sigs[short[-1 - back]][0] == sigs[long_[-1 - back]][0]:
+                        back += 1
+                    for j in range(a - back, front + 1):
+                        core = long_[:j] + long_[j + g:]
+                        cand = _gapped_block(toks, sigs, depth, s, la + lb, short, core,
+                                             long_[j:j + g], j, first_long)
+                        if cand is None:
+                            continue
+                        cand.saving = sum(lv[s:s + la + lb]) - _tl(cand.tok)
+                        if cand.saving > 0 and (best is None or cand.rank > best.rank):
+                            best = cand
+    return best
+
+
+def _gapped_block(toks, sigs, depth, s, n, short, core, extra, j, first_long):
+    # period 1 is the first stretch, period 2 the second
+    p1, p2 = (core, short) if first_long else (short, core)
+    fl, ml, shapes = [], [], []
+    for x, y in zip(p1, p2):
+        row = [fit([(1, u), (2, v)]) for u, v in zip(sigs[x][1], sigs[y][1])]
+        if any(f is None for f in row):
+            return None
+        fl.append(row)
+        ml.append(sigs[x][2])
+        shapes.append(sigs[x][0])
+    if not (_two_ok(fl, ml, TWO_PERIOD_MOVING, True) if depth == 0
+            else _two_ok(fl, ml, TWO_PERIOD_MOVING_BODY, False)):
+        return None
+    body = [_unsig(sh, iter(row), "_new") for sh, row in zip(shapes, fl)]
+    # the extra pieces: once in the stretch that has them, not in the other
+    count = {(): F(2), (("p", "_new", 1),): F(-1)} if first_long \
+        else {(): F(-1), (("p", "_new", 1),): F(1)}
+    body.insert(j, TRep(None, E1, _norm(count), tuple(_shift(toks[e], depth) for e in extra)))
+    body = tuple(_mapvars(_shift(b, depth), lambda v: f"_v{depth}" if v == "_new" else v)
+                 for b in body)
+    tok = TRep(f"_v{depth}", E1, _const(2), body)
+    return TBlock(s, s + n, 0, 0, tok, 0, sum(f.cost for row in fl for f in row) + 2)
+
+
+def _squeeze_one(tok, depth: int, top: bool = False):
+    if isinstance(tok, TRow):
+        return tok
+    wrapper = top and tok.var is None and tok.stop == E1
+    return TRep(tok.var, tok.start, tok.stop,
+                tuple(_squeeze(list(tok.body), depth + 1, wrapper)))
+
+
+def _token_forms(rows: list[Row], tree: list, deep: bool = True) -> list[list]:
+    """More forms for the rows, from the token layer: periods over the items
+    of `tree` (the search above), over exactly repeated groups of rows, and
+    -- when `deep` -- over pieces cut where one kind of row recurs; then the
+    bodies of every block searched again."""
+    starts = []
+    first = [_from_tree(x) for x in tree]
+    if all(t is not None for t in first):
+        starts.append(first)
+    starts.append(_tandem(_atom_tokens(rows, 3)))
+    starts.append(_tandem(_atom_tokens(rows, None)))
+    if deep:
+        starts.extend(_cut_tokens(rows))
+    out = []
+    for toks in starts:
+        for _ in range(4):
+            new = _lift(rows, toks)
+            if sum(map(_tl, new)) >= sum(map(_tl, toks)):
+                break
+            toks = new
+        toks = _squeeze(toks)
+        out.append(_unwrap([_to_tree(t) for t in toks]))
+    return out
+
+
+# Kinds of row tried as the start of an outer period, rarest first.
+CUT_KINDS = 3
+
+
+def _kind(row: Row) -> tuple:
+    """A row with every number but 0 and 1 blanked, as ReduceSetList's
+    generic pass compares them."""
+    return (len(row),) + tuple(x if x in (0, 1) else None for x in row)
+
+
+def _cut_tokens(rows: list[Row]) -> list[list]:
+    """Top-down starts: the rows cut before each row of one kind, each piece
+    reduced on its own and made one token. When period n of the outer block
+    holds n inner blocks (€n[{n}, €(i,1,n)[...]]) no period of the pieces
+    below lines up; the pieces themselves do, and _lift fits across them."""
+    count: dict = {}
+    for r in rows:
+        count[_kind(r)] = count.get(_kind(r), 0) + 1
+    kinds = sorted((c, repr(g), g) for g, c in count.items() if 2 <= c <= len(rows) // 3)
+    out = []
+    for _, _, g in kinds[:CUT_KINDS]:
+        cuts = [i for i, r in enumerate(rows) if _kind(r) == g]
+        toks = _atom_tokens(rows[:cuts[0]], None)
+        for a, b in zip(cuts, cuts[1:] + [len(rows)]):
+            piece = _best_tokens(rows[a:b])
+            # one token for the piece: a repeat of one, unwrapped when written
+            toks.append(TRep(None, E1, E1, tuple(_shift(t, 0) for t in piece)))
+        out.append(toks)
+    return out
+
+
+def _best_tokens(rows: list[Row]) -> list:
+    """The smallest form of a piece of the rows, as tokens. The pieces' own
+    search is not reported to the caller, only given its chances to stop."""
+    cb = getattr(_trace, "cb", None)
+    _trace.cb = None if cb is None else (lambda ev: cb(None))
+    try:
+        best = _rle_tree(rows)
+        if len(rows) >= 2:
+            tree = _reduce(rows)
+            for form in [tree] + _token_forms(rows, tree, deep=False):
+                if (leaves(form), written(form)) < (leaves(best), written(best)) \
+                        and [tuple(x) for x in expand(form)] == rows:
+                    best = form
+    finally:
+        _trace.cb = cb
+    toks = [_from_tree(x) for x in best]
+    return toks if all(t is not None for t in toks) else _atom_tokens(rows, None)
+
+
+def _unwrap(tree):
+    """Repeats of one spliced into what holds them."""
+    def items(xs):
+        out = []
+        for x in xs:
+            x = _unwrap(x)
+            if isinstance(x, IC) and x.it.is_count and x.it.stop == 1:
+                out.extend(x.args)
+            else:
+                out.append(x)
+        return out
+    if isinstance(tree, IC):
+        return IC(items(tree.args), tree.it)
+    if isinstance(tree, list):
+        return items(tree)
+    return tree
+
+
+def _leaf_exprs(item):
+    if isinstance(item, IC):
+        for a in item.args:
+            yield from _leaf_exprs(a)
+        if not item.it.is_count:
+            yield item.it.start
+        yield item.it.stop
+    elif isinstance(item, (list, tuple)):
+        for a in item:
+            yield from _leaf_exprs(a)
+    elif isinstance(item, sympy.Basic):
+        yield item
+
+
+def _subs(item, v, e):
+    def num(x):
+        if not isinstance(x, sympy.Basic):
+            return x
+        x = sympy.expand(x.subs(v, e))
+        return int(x) if x.is_Integer else _shortest(x)
+    if isinstance(item, IC):
+        it = item.it
+        nit = Iter(it.var, num(it.start) if not it.is_count else it.start, num(it.stop),
+                   it.upper, it.table)
+        return IC([_subs(a, v, e) for a in item.args], nit)
+    if isinstance(item, tuple):
+        return tuple(_subs(a, v, e) for a in item)
+    if isinstance(item, list):
+        return [_subs(a, v, e) for a in item]
+    return num(item)
+
+
+# Highest number an index may be moved to start from; an index may always
+# start at an expression in the indices around it (€(j,k,6)).
+REINDEX_MAX = 10
+
+
+def _reindex(tree):
+    """Each index started where its body reads simplest: €(j,k,6)[{j}] rather
+    than €(j,1,7-k)[{j+k-1}]. The rows are the same; only the writing moves."""
+    if isinstance(tree, list):
+        return [_reindex(x) for x in tree]
+    if not isinstance(tree, IC):
+        return tree
+    ic = IC([_reindex(a) for a in tree.args], tree.it)
+    it = ic.it
+    if it.is_count:
+        return ic
+    v = sympy.Symbol(it.var)
+    offsets = set()
+    for e in _leaf_exprs(ic.args):
+        c = sympy.expand(e).coeff(v)
+        if c in (1, -1):
+            rest = sympy.expand(e - c * v)
+            if rest != 0 and v not in rest.free_symbols:
+                offsets.add(rest if c == 1 else -rest)
+    best, size = ic, written([ic])
+    for o in sorted(offsets, key=str):
+        cand = _subs(ic, v, v - o)
+        start = sympy.expand(it.start + o)
+        stop = sympy.expand(it.stop + o)
+        if start.is_Integer and not 0 <= start <= REINDEX_MAX:
+            continue                # €(k,-2,-1), €(k,71,72): shorter, not clearer
+        cand = IC(cand.args, Iter(it.var, int(start) if start.is_Integer else _shortest(start),
+                                  int(stop) if stop.is_Integer else _shortest(stop),
+                                  it.upper, it.table))
+        if written([cand]) < size:
+            best, size = cand, written([cand])
+    return best
+
+
+def _row_runs(tree):
+    """Runs of equal numbers inside a row written as one, {1,€(3)[3]} for
+    {1,3,3,3} as the paper writes Fig. 5(h) -- wherever that is shorter."""
+    if isinstance(tree, IC):
+        return IC([_row_runs(a) for a in tree.args], tree.it)
+    if isinstance(tree, list):
+        return [_row_runs(x) for x in tree]
+    if not isinstance(tree, tuple):
+        return tree
+    out, i = [], 0
+    while i < len(tree):
+        j = i
+        while j + 1 < len(tree) and not isinstance(tree[i], IC) and tree[j + 1] == tree[i]:
+            j += 1
+        c = j - i + 1
+        one = written([(tree[i],)])
+        if c >= 2 and c * one > 1 + one:
+            out.append(IC([tree[i]], Iter(None, 1, c)))
+        else:
+            out.extend(tree[i:j + 1])
+        i = j + 1
+    return tuple(out)
+
+
 @dataclass
 class Result:
     tree: list
@@ -631,9 +1545,17 @@ def concatenate(rows, on_event=None) -> Result:
     _trace.cb, _trace.base, _trace.round = on_event, 0, 0
     try:
         tree = _reduce(rows)
+        ok = [tuple(x) for x in expand(tree)] == rows
+        if not ok:                       # never hand back something wrong
+            tree = _rle_tree(rows)
+        # The token layer can only add forms: one is taken only if it is
+        # smaller and expands back to the rows exactly.
+        size = (leaves(tree), written(tree))
+        for form in [tree] + _token_forms(rows, tree):
+            form = _row_runs(_reindex(form))
+            if (leaves(form), written(form)) < size \
+                    and [tuple(x) for x in expand(form)] == rows:
+                tree, size, ok = form, (leaves(form), written(form)), True
     finally:
         _trace.cb = None
-    ok = [tuple(x) for x in expand(tree)] == rows
-    if not ok:                       # never hand back something wrong
-        tree = _rle_tree(rows)
     return Result(tree, rows, ok)

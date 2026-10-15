@@ -21,6 +21,12 @@ Input syntax (ASCII alias IC for the € sign):
     €(i,0,3)[{32, 60+2*i}]   the same again as Mathematica's Table iterator:
                              variable, first, last. First and last may use an
                              enclosing index, as in €(i,0,3)[€(j,i,3)[...]]
+    {67 + €(i,1,n-2)[10], 16}  a € inside a number: a term of a sum, adding up
+                             what it expands to, and nothing when it is empty --
+                             67, 67, 67, 77 for n = 0..3. Mathematica does the
+                             same, since iC gives a Sequence and Plus[67,
+                             Sequence[]] is 67. Only + may join it: 2*Sequence[
+                             10,10] is Times[2,10,10], which is not 2*(10+10).
 """
 from __future__ import annotations
 
@@ -79,8 +85,45 @@ class IC:
         return f"{self.it.render()}[{', '.join(_render(a) for a in self.args)}]"
 
 
+@dataclass
+class Arith:
+    """A number with € terms in it, as 67 + €(i,1,n-2)[10]. `expr` is the
+    number with a placeholder symbol for each €, standing alone as a term of
+    the sum (coefficient 1); `parts` are those €s, in placeholder order. Each
+    adds up the numbers it expands to, and 0 when it expands to nothing."""
+    expr: object
+    parts: list
+
+    def __post_init__(self):
+        e = sympy.expand(sympy.sympify(self.expr))
+        for p in self.placeholders:
+            if e.coeff(p) != 1 or sympy.expand(e - p).has(p):
+                raise ICError("a € inside a number must be a term of a sum, joined by +: "
+                              "write 67 + €(i,1,n)[10], or put a minus inside, €(i,1,n)[-10]")
+
+    @property
+    def placeholders(self) -> list:
+        return [sympy.Symbol(f"_ic{k}") for k in range(len(self.parts))]
+
+    @property
+    def rest(self):
+        """The number without its € terms."""
+        return sympy.expand(sympy.sympify(self.expr)).subs({p: 0 for p in self.placeholders})
+
+    def render(self) -> str:
+        return self.write(lambda x: str(x).replace("**", "^"), lambda ic: ic.render())
+
+    def write(self, number, euro) -> str:
+        """`number` writes the rest, `euro` writes each €, joined by +."""
+        rest = self.rest
+        terms = [] if rest == 0 else [number(rest)]
+        return " + ".join(terms + [euro(ic) for ic in self.parts])
+
+    __str__ = render
+
+
 def _render(v) -> str:
-    if isinstance(v, IC):
+    if isinstance(v, (IC, Arith)):
         return v.render()
     if isinstance(v, Seq):
         return "[" + ", ".join(_render(x) for x in v) + "]"
@@ -107,6 +150,15 @@ def _evaluate(value, env: dict):
     """Resolve a leaf to a number under the current index bindings."""
     if isinstance(value, (int, Fraction)):
         return value
+    if isinstance(value, Arith):
+        sums = {}
+        for p, ic in zip(value.placeholders, value.parts):
+            got = expand(ic, env)
+            if any(isinstance(x, list) for x in got):
+                raise ICError(f"a € inside a number must give numbers, but {ic.render()} "
+                              f"gives sets")
+            sums[p] = sum((sympy.nsimplify(x) for x in got), sympy.Integer(0))
+        return _evaluate(sympy.sympify(value.expr).subs(sums), env)
     if isinstance(value, sympy.Expr):
         out = value.subs(env)
         if out.free_symbols:
@@ -278,13 +330,16 @@ def parse(text: str, where: dict | None = None):
         return items
 
     def table_limits() -> list[str]:
-        """The comma-separated limits of (i, a, b), up to its closing paren."""
+        """The comma-separated limits of (i, a, b), up to its closing paren.
+        A limit may hold a € with a bracketed body, so brackets nest too."""
         nonlocal pos
         parts, depth, start = [], 0, pos
         while pos < len(s):
             ch = s[pos]
-            if ch == "(":
+            if ch in "([{":
                 depth += 1
+            elif ch in "]}":
+                depth -= 1
             elif ch == ")":
                 if depth == 0:
                     parts.append(s[start:pos].strip()); pos += 1
@@ -295,7 +350,7 @@ def parse(text: str, where: dict | None = None):
             pos += 1
         raise ICError(f"{EURO}( is missing its closing parenthesis")
 
-    def parse_one():
+    def parse_one(arith: bool = True):
         nonlocal pos
         skip()
         c = s[pos]
@@ -347,11 +402,24 @@ def parse(text: str, where: dict | None = None):
             # The bracket right after € delimits the IC's arguments; it is not
             # itself a vanishing sequence.
             body = parse_seq("]" if opener == "[" else "}", opened=head - 1)
-            return mark(IC(list(body), it), at, head, pos)
+            node = mark(IC(list(body), it), at, head, pos)
+            skip()
+            if arith and pos < len(s) and s[pos] == "+":
+                # €(...)[...] + 67: the € is the first term of a number
+                return scalar([], [node])
+            return node
         if c in "[{":
             pos += 1
             return mark(parse_seq("]" if c == "[" else "}", seq=(c == "["), opened=at), at, pos)
-        # a scalar: read to the next top-level delimiter, hand it to sympy
+        return scalar([], [])
+
+    def scalar(text: list, parts: list):
+        """A number: read to the next top-level delimiter and hand it to sympy.
+        A € after a + is a term of it (see Arith); `parts` are the €s read so
+        far, each standing in `text` as its placeholder."""
+        nonlocal pos
+        if parts:
+            text = text + [f"_ic{len(parts) - 1}"]
         depth, start = 0, pos
         while pos < len(s):
             ch = s[pos]
@@ -364,20 +432,39 @@ def parse(text: str, where: dict | None = None):
             elif ch == "," and depth == 0:
                 break
             elif ch == EURO and depth == 0:
-                break
+                if not "".join(text + [s[start:pos]]).rstrip().endswith("+"):
+                    break
+                text.append(s[start:pos])
+                ic = parse_one(arith=False)
+                if not isinstance(ic, IC):
+                    raise ICError("a € inside a number must be a single €(...)[...]")
+                parts.append(ic)
+                text.append(f"_ic{len(parts) - 1}")
+                start = pos
+                continue
             pos += 1
-        tok = s[start:pos].strip()
+        text.append(s[start:pos])
+        tok = "".join(text).strip()
         if not tok:
             raise ICError(f"empty token at {start}")
-        return _sym(tok)
+        value = _sym(tok)
+        return Arith(value, parts) if parts else value
 
     tree = parse_seq("")
     return tree[0] if len(tree) == 1 else tree
 
 
 def _sym(tok: str):
-    """A number stays exact; anything with a variable becomes a sympy expr."""
+    """A number stays exact; anything with a variable becomes a sympy expr,
+    and anything with a € in it an Arith (a limit can hold one too)."""
     tok = tok.strip()
+    if EURO in tok:
+        got = parse(tok)
+        if isinstance(got, IC):             # a lone €: the sum of what it gives
+            return Arith(sympy.Symbol("_ic0"), [got])
+        if not isinstance(got, Arith):
+            raise ICError(f"cannot read {tok!r} as a number")
+        return got
     if re.fullmatch(r"-?\d+", tok):
         return int(tok)
     if re.fullmatch(r"-?\d+\s*/\s*-?\d+", tok):
@@ -561,13 +648,20 @@ def render_latex(tree, colors: list[str] | None = None, order: dict | None = Non
             sym = rf"\textcolor[HTML]{{{c}}}{{{sym}}}"
         it = node.it
         if it.is_count:
-            return rf"\mathop{{{sym}}}\nolimits^{{{_tex_leaf(it.stop)}}}"
-        top = _tex_leaf(it.stop)
+            return rf"\mathop{{{sym}}}\nolimits^{{{leaf(it.stop)}}}"
+        top = leaf(it.stop)
         if it.upper:
             top = rf"{it.upper}={top}"
-        return rf"\mathop{{{sym}}}\limits_{{{it.var}={_tex_leaf(it.start)}}}^{{{top}}}"
+        return rf"\mathop{{{sym}}}\limits_{{{it.var}={leaf(it.start)}}}^{{{top}}}"
+
+    def leaf(v) -> str:
+        if isinstance(v, Arith):
+            return v.write(_tex_leaf, go)
+        return _tex_leaf(v)
 
     def go(v) -> str:
+        if isinstance(v, Arith):
+            return leaf(v)
         if isinstance(v, IC):
             return euro(v) + r"\bigl[" + r",\allowbreak ".join(go(a) for a in v.args) + r"\bigr]"
         if isinstance(v, Seq):
@@ -578,7 +672,7 @@ def render_latex(tree, colors: list[str] | None = None, order: dict | None = Non
             if any(isinstance(a, (list, tuple, IC)) for a in v):
                 inner = r",\allowbreak ".join(go(a) for a in v)
             return r"\{" + inner + r"\}"
-        return _tex_leaf(v)
+        return leaf(v)
 
     return go(tree)
 
@@ -590,6 +684,8 @@ def render_wl(tree) -> str:
     from sympy.printing.mathematica import mathematica_code
 
     def leaf(v) -> str:
+        if isinstance(v, Arith):           # iC gives a Sequence, which Plus adds up
+            return v.write(leaf, go)
         if isinstance(v, Fraction):
             return str(v.numerator) if v.denominator == 1 else f"{v.numerator}/{v.denominator}"
         if isinstance(v, sympy.Expr):
@@ -597,6 +693,8 @@ def render_wl(tree) -> str:
         return str(v)
 
     def go(v) -> str:
+        if isinstance(v, Arith):
+            return leaf(v)
         if isinstance(v, IC):
             it, body = v.it, ", ".join(go(a) for a in v.args)
             if it.is_count:

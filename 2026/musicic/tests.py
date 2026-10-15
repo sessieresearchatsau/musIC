@@ -185,8 +185,9 @@ for rows in ([(32, 60)] * 8,
 # always lossless, and never larger than its best result so far. Mathematica's
 # ReduceSetList gives 7, 13, 6, 120 and 141 leaves on the same rows.
 import re                                            # noqa: E402
+import sys                                           # noqa: E402
 
-from musicic.core.concat import concatenate          # noqa: E402
+from musicic.core.concat import concatenate, leaves  # noqa: E402
 
 EXAMPLES = ("/Users/derekrenck/Documents/GitHub/musIC/2026/musicic/docs/"
             "concatenation-examples.md")
@@ -201,12 +202,83 @@ for n, cut, best in ((2, 463, 7), (3, None, 8), (4, None, 6),
     check(f"concat set {n} expands", [tuple(x) for x in expand(r.tree)], rows)
     check(f"concat set {n} size <= {best}", r.size <= best, True)
 
+# 7c. The networks of the ICN paper (docs/networks): lossless, and no more
+# rows than the paper writes -- Fig. 4(b) included, the €(m,0,1) form the paper
+# made by hand. Fig. 6(f) (4112 rows, half a minute) is left to network_tests.py.
+sys.path.insert(0, "/Users/derekrenck/Documents/GitHub/musIC/2026/musicic/docs/networks")
+from paper_forms import FORMS, rows as network_rows   # noqa: E402
+
+for name, (_, form) in FORMS.items():
+    if name == "fig6f":
+        continue
+    rows = network_rows(name)
+    r = concatenate(rows)
+    best = leaves(parse(form))
+    check(f"concat {name} lossless", [tuple(x) for x in expand(r.tree)], rows)
+    check(f"concat {name} rows <= {best}", r.size <= best, True)
+
+from musicic.core.ic import ICError, render                       # noqa: E402
+from musicic.core.strategies import STRATEGIES, bars_of             # noqa: E402
+from musicic.core.strategies import run as run_strategy             # noqa: E402
+
+# 7d. A € inside a number is a term of a sum, adding what it expands to and 0
+# when it is empty -- as Plus[67, Sequence[]] is 67 in Mathematica. These are
+# the board's forms; each was checked against wolframscript and SSSiCv102.wl.
+for text, want in [
+        ("IC(n=0..3)[{67 + IC(i,1,n-2)[10], 16}]", [[67, 16]] * 3 + [[77, 16]]),
+        ("IC(n=0..3)[{IC(i,1,n-2)[10] + 67, 16}]", [[67, 16]] * 3 + [[77, 16]]),
+        ("IC(n,0,3)[{67 + IC(i,1,n)[i], 8}]", [[67, 8], [68, 8], [70, 8], [73, 8]]),
+        ("IC(j,0,3)[{IC(i,1,j)[2(-1)^(i+1)] + 72, 32}]", [[72, 32], [74, 32]] * 2),
+        ("IC(j,0,2)[IC(i,0,1+IC(1-(j-1)^2)[1])[{72-i}]]",
+         [[72], [71], [72], [71], [70], [72], [71]]),
+        ("IC(j,0,1)[IC(i,0,2-3j)[{72-i, 32}]]", [[72, 32], [71, 32], [70, 32]]),
+        ("IC(i,0,0)[{1}]", [[1]])]:
+    tree = parse(text)
+    check(f"E3 {text}", expand(tree if isinstance(tree, list) else [tree]), want)
+    again = parse(render(tree).replace("**", "^"))
+    check(f"E3 round trip {text}", expand(again if isinstance(again, list) else [again]), want)
+for text in ["{67 - IC(i,1,2)[10]}", "{2*IC(i,1,2)[10]}", "{IC(2)[{1}] + 3}"]:
+    try:
+        expand([parse(text)])
+        fails.append(f"E3 accepted {text}")
+    except ICError:
+        pass
+
+# 7e. The named approaches (core/strategies.py). Every one is lossless; the
+# default level search is what it was (7 rows, 65 numbers on Happy Birthday);
+# bars and gates do what they are for.
+hb = SetFile.load("/Users/derekrenck/Documents/GitHub/musIC/2026/musicic/scores/"
+                  "happy-birthday-melody.music.json")
+hb_ns = hb.to_noteset()
+hb_enc = E.encode(hb_ns, "pair_flip")
+hb_rows, hb_bars = [tuple(r) for r in hb_enc.flat], bars_of(hb_enc, hb_ns)
+check("bars of Happy Birthday", hb_bars, [0, 0, 0, 0, 1, 1, 2, 2, 2, 2, 3, 3, 4, 4, 4, 4,
+                                          5, 5, 5, 6, 6, 6, 6, 7, 7])
+got = {}
+for st in STRATEGIES:
+    o = run_strategy(st.code, hb_rows, hb_bars)
+    got[st.code] = o.measures
+    check(f"{st.code} Happy Birthday lossless", o.verified, True)
+    check(f"{st.code} Happy Birthday bar fit", 0 <= o.measures["bar_fit"] <= 1, True)
+check("S·U unchanged", (got["S·U"]["rows"], got["S·U"]["numbers"]), (7, 65))
+check("B·U one part", got["B·U"]["parts"], 1)
+check("S·U·E one part of 3 rows", (got["S·U·E"]["parts"], got["S·U·E"]["rows"]), (1, 3))
+check("S·U·E uses a € in a number", "E3" in got["S·U·E"]["tools"], True)
+check("S·F no E3", "E3" in got["S·F"]["tools"], False)
+for name in ["fig1", "fig3", "fig5e"]:          # fig6b (50 s gated) is left to compare_strategies.py
+    rows = network_rows(name)
+    for st in STRATEGIES:
+        if not st.needs_bars:
+            check(f"{st.code} {name} lossless", run_strategy(st.code, rows).verified, True)
+
 # 8. Set files: the path a transcribed picture takes into the app.
 SCORES = "/Users/derekrenck/Documents/GitHub/musIC/2026/musicic/scores/"
 
 # Every shipped transcription parses, checks clean and draws.
 for name in ("happy-birthday-melody.music.json",
-             "happy-birthday-piano.music.json"):
+             "happy-birthday-piano.music.json",
+             "frere-jacques.music.json",
+             "ode-to-joy-theme.music.json"):
     sf = SetFile.load(SCORES + name)
     check(f"{name} warnings", [w.message for w in setfile_check(sf)], [])
     ns = sf.to_noteset()
@@ -214,6 +286,9 @@ for name in ("happy-birthday-melody.music.json",
     check(f"{name} whole bars", ns.span % bar, 0)
     check(f"{name} describes", "nothing suspicious" in describe(sf), True)
     check(f"{name} draws", len(layout(ns, 8)["measures"]) > 0, True)
+# A pickup leaves the last bar short, and that is the only thing to say about it.
+sf = SetFile.load(SCORES + "happy-birthday-pickup.music.json")
+check("pickup warns of its last bar only", [w.kind for w in setfile_check(sf)], ["barline"])
 
 # The two readings of the same picture must agree: the top line of the piano
 # transcription is exactly the melody transcription.

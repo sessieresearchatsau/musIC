@@ -1,0 +1,95 @@
+{
+  "musicic": 1,
+  "name": "Ode to Joy — theme",
+  "encoder": "pair",
+  "grid": 32,
+  "tempo": 112,
+  "numerator": 4,
+  "denominator": 4,
+  "key": "D",
+  "source": "Beethoven, Symphony No. 9, finale: the 16-bar theme, written out by hand",
+  "transcription": {
+    "by": "Claude, from the theme as it is usually printed",
+    "covers": "melody only, AA'BA', 16 bars, in D as the symphony has it",
+    "notes": "A and A' differ only in their last bar (F# E E, then E D D): the case for variants. 2026/midis/ode-to-joy.mid is an orchestral performance with humanized timing, so it is not used for comparing."
+  },
+  "set": [
+    [32, 66],
+    [32, 66],
+    [32, 67],
+    [32, 69],
+
+    [32, 69],
+    [32, 67],
+    [32, 66],
+    [32, 64],
+
+    [32, 62],
+    [32, 62],
+    [32, 64],
+    [32, 66],
+
+    [48, 66],
+    [16, 64],
+    [64, 64],
+
+    [32, 66],
+    [32, 66],
+    [32, 67],
+    [32, 69],
+
+    [32, 69],
+    [32, 67],
+    [32, 66],
+    [32, 64],
+
+    [32, 62],
+    [32, 62],
+    [32, 64],
+    [32, 66],
+
+    [48, 64],
+    [16, 62],
+    [64, 62],
+
+    [32, 64],
+    [32, 64],
+    [32, 66],
+    [32, 62],
+
+    [32, 64],
+    [16, 66],
+    [16, 67],
+    [32, 66],
+    [32, 62],
+
+    [32, 64],
+    [16, 66],
+    [16, 67],
+    [32, 66],
+    [32, 64],
+
+    [32, 62],
+    [32, 64],
+    [64, 57],
+
+    [32, 66],
+    [32, 66],
+    [32, 67],
+    [32, 69],
+
+    [32, 69],
+    [32, 67],
+    [32, 66],
+    [32, 64],
+
+    [32, 62],
+    [32, 62],
+    [32, 64],
+    [32, 66],
+
+    [48, 64],
+    [16, 62],
+    [64, 62]
+  ]
+}

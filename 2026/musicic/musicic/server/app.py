@@ -1,21 +1,27 @@
 """Local HTTP API. Single user, in-memory state -- this is a lab tool."""
 from __future__ import annotations
 
+import json
+import queue
 import re
+import threading
+import time
 import traceback
 import uuid
 from dataclasses import asdict, replace
 from pathlib import Path
 
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
-from fastapi.responses import FileResponse, JSONResponse, Response
+from fastapi.responses import FileResponse, JSONResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from ..core import encoders as E
 from ..core import concat as CONCAT
 from ..core import ic as ICmod
+from ..core import levels as LEVELS
 from ..core import notebookfile as NBF
+from ..core import strategies as STRATS
 from ..core.metrics import measure
 from ..core.keysig import Key
 from ..core.midi_in import read_midi
@@ -723,6 +729,8 @@ MATHEMATICA_LEAVES = {2: 7, 3: 13, 4: 6, 5: 120, 6: 141}
 
 class ConcatReq(BaseModel):
     text: str
+    strategy: str = "S·U"
+    bars: list[int] | None = None     # the bar of each row, when the set came from a piece
 
 
 def _concat_parts(tree) -> list[dict]:
@@ -741,32 +749,166 @@ def _concat_parts(tree) -> list[dict]:
     return parts
 
 
+def _concat_rows(text: str) -> list:
+    rows = parse_set(text)
+    if rows and isinstance(rows[0], list):
+        raise ValueError("this is a list of groups of rows; paste a flat list of rows")
+    if not rows:
+        raise ValueError("nothing to parse")
+    if any(not float(x).is_integer() for r in rows for x in r):
+        raise ValueError("the reducer works on whole numbers only")
+    return rows
+
+
+def _concat_bars(req: ConcatReq, rows: list):
+    """The bar lines, if they still belong to these rows: an edit that
+    changed how many rows there are leaves them behind."""
+    return req.bars if req.bars and len(req.bars) == len(rows) else None
+
+
+def _outcome(o, rows) -> dict:
+    """One approach's answer, with its measures."""
+    st = o.strategy
+    return {"code": st.code, "name": st.name, "blurb": st.blurb,
+            "text": o.text, "mathematica": STRATS.wolfram(o.tree),
+            "leaves": o.measures["rows"], "verified": o.verified,
+            "seconds": o.seconds, "measures": o.measures,
+            "levels": o.levels, "parts": _concat_parts(o.tree),
+            "rows": len(rows), "runs_only": CONCAT._rle_leaves([tuple(r) for r in rows])}
+
+
+def _strategy_of(req: ConcatReq, bars) -> str:
+    if req.strategy not in STRATS.BY_CODE:
+        raise ValueError(f"no approach called {req.strategy!r}")
+    if STRATS.BY_CODE[req.strategy].needs_bars and bars is None:
+        raise ValueError(f"{req.strategy} goes bar by bar, and this set has no bar lines: "
+                         f"load a piece from the menu, or pick another approach")
+    return req.strategy
+
+
+@app.get("/api/concatenate/strategies")
+def concatenate_strategies():
+    """The approaches, and what each made of the corpus when
+    compare_strategies.py last ran (docs/strategies/results.json)."""
+    corpus = None
+    path = Path(__file__).resolve().parent.parent.parent / "docs" / "strategies" / "results.json"
+    try:
+        corpus = json.loads(path.read_text())
+    except (OSError, ValueError):
+        pass
+    return {"strategies": [{"code": s.code, "name": s.name, "blurb": s.blurb,
+                            "choose": s.choose, "build": s.build, "tools": s.tools,
+                            "needs_bars": s.needs_bars} for s in STRATS.STRATEGIES],
+            "corpus": corpus}
+
+
 @app.post("/api/concatenate")
 def concatenate(req: ConcatReq):
-    """Reduce a pasted set to nested indexed concatenations."""
-    import time
+    """Reduce a pasted set to nested indexed concatenations, one approach."""
     try:
-        rows = parse_set(req.text)
-        if rows and isinstance(rows[0], list):
-            raise ValueError("this is a list of groups of rows; paste a flat list of rows")
-        if not rows:
-            raise ValueError("nothing to parse")
-        if any(not float(x).is_integer() for r in rows for x in r):
-            raise ValueError("the reducer works on whole numbers only")
-        t0 = time.perf_counter()
-        res = CONCAT.concatenate(rows)
-        secs = time.perf_counter() - t0
-        return {"text": res.text,
-                "mathematica": ICmod.render_wl(res.tree).replace("iC[", "IndexedConcatenate["),
-                "rows": len(rows),
-                "runs_only": CONCAT._rle_leaves(res.rows),
-                "leaves": res.size,
-                "verified": res.verified,
-                "seconds": round(secs, 2),
-                "parts": _concat_parts(res.tree)}
+        rows = _concat_rows(req.text)
+        bars = _concat_bars(req, rows)
+        return _outcome(STRATS.run(_strategy_of(req, bars), rows, bars), rows)
     except Exception as exc:                       # noqa: BLE001
         traceback.print_exc()
         return _err(exc)
+
+
+# search id -> its stop flag, while it runs
+CONCAT_RUNS: dict[str, threading.Event] = {}
+
+
+def _stream(rows, job):
+    """Run job(on_event, put) in a thread, streaming one JSON object per line:
+    a "start" with the search id, the events, then "done", "error" or
+    "stopped". The page's Stop, or the page going away, stops it."""
+    run_id, stop, q = uuid.uuid4().hex[:12], threading.Event(), queue.Queue()
+    CONCAT_RUNS[run_id] = stop
+
+    def on_event(ev: dict) -> None:
+        if stop.is_set():
+            raise LEVELS.Stopped()
+        if ev is not None:
+            q.put(ev)
+
+    def work() -> None:
+        t0 = time.perf_counter()
+        try:
+            q.put({"t": "done", **job(on_event, q.put)})
+        except (CONCAT.Stopped, LEVELS.Stopped):
+            q.put({"t": "stopped", "seconds": round(time.perf_counter() - t0, 2)})
+        except Exception as exc:                   # noqa: BLE001
+            traceback.print_exc()
+            q.put({"t": "error", "error": str(exc)})
+        finally:
+            q.put(None)
+            CONCAT_RUNS.pop(run_id, None)
+
+    threading.Thread(target=work, daemon=True).start()
+
+    def lines():
+        try:
+            text = ["{" + ", ".join(str(int(x)) for x in r) + "}" for r in rows]
+            yield json.dumps({"t": "start", "id": run_id, "rows": len(rows),
+                              "rowsText": text}) + "\n"
+            while (ev := q.get()) is not None:
+                yield json.dumps(ev) + "\n"
+        finally:
+            stop.set()                  # the page went away: stop searching
+
+    return StreamingResponse(lines(), media_type="application/x-ndjson",
+                             headers={"Cache-Control": "no-store", "X-Accel-Buffering": "no"})
+
+
+@app.post("/api/concatenate/stream")
+def concatenate_stream(req: ConcatReq):
+    """The same search, reported as it goes (see _stream): the search's own
+    events (see concat.concatenate), then "done" with what /api/concatenate
+    returns."""
+    try:
+        rows = _concat_rows(req.text)
+        bars = _concat_bars(req, rows)
+        code = _strategy_of(req, bars)
+    except Exception as exc:                       # noqa: BLE001
+        return _err(exc)
+    return _stream(rows, lambda on_event, _put: _outcome(STRATS.run(code, rows, bars, on_event), rows))
+
+
+@app.post("/api/concatenate/compare")
+def concatenate_compare(req: ConcatReq):
+    """Every approach that applies, one after another: a "result" line as
+    each finishes, then "done" with all of them."""
+    try:
+        rows = _concat_rows(req.text)
+        bars = _concat_bars(req, rows)
+    except Exception as exc:                       # noqa: BLE001
+        return _err(exc)
+
+    def job(on_event, put):
+        out = []
+        for st in STRATS.STRATEGIES:
+            if st.needs_bars and bars is None:
+                got = {"code": st.code, "name": st.name, "skipped": "no bar lines"}
+            else:
+                put({"t": "round", "n": len(out) + 1, "r0": 0, "r1": len(rows),
+                     "label": f"{st.code} · {st.name}"})
+                got = _outcome(STRATS.run(st.code, rows, bars, on_event), rows)
+            put({"t": "result", **got})
+            out.append(got)
+        return {"results": out, "rows": len(rows)}
+    return _stream(rows, job)
+
+
+class StopReq(BaseModel):
+    id: str
+
+
+@app.post("/api/concatenate/stop")
+def concatenate_stop(req: StopReq):
+    stop = CONCAT_RUNS.get(req.id)
+    if stop:
+        stop.set()
+    return {"stopped": bool(stop)}
 
 
 @app.get("/api/concatenate/examples")
@@ -797,4 +939,17 @@ def concatenate_examples():
                     # set only when Mathematica was given fewer rows than pasted
                     "limit": limit if limit and limit < len(rows) else None,
                     "mathematica_leaves": MATHEMATICA_LEAVES.get(n)})
+    # the transcriptions, with the bar of each row, for the bar-by-bar approaches
+    for p in _library_files():
+        try:
+            sf = SetFile.load(p)
+            ns = sf.to_noteset()
+            enc = E.encode(ns, sf.encoder)
+        except Exception:                          # noqa: BLE001
+            continue
+        rows = [list(r) for r in enc.flat]
+        out.append({"id": f"piece:{p.relative_to(SCORES)}", "title": sf.name,
+                    "text": to_mathematica(rows), "rows": len(rows), "limit": None,
+                    "piece": True, "columns": list(enc.columns),
+                    "bars": STRATS.bars_of(enc, ns), "mathematica_leaves": None})
     return {"examples": out}

@@ -88,6 +88,19 @@ IC(i,1,3)[IC(i)[{16, 60+i}]]          a count from an index: 1, 2, then 3 copies
 `IC(n)[...]`, and `IC(0)` -- or any count that comes out 0 or less -- makes
 none. The older `IC2[...]` is read the same as `IC(2)[...]`.
 
+A `€` can also sit inside a number, as a term of a sum: it adds up what it
+expands to, and adds nothing when it is empty. That makes it a switch:
+
+```
+IC(n=0..3)[{67 + IC(i,1,n-2)[10], 16}]      67, 67, 67, 77: a step once n passes 2
+IC(j,0,3)[IC(i,0,1+IC(1-(j-2)^2)[1])[...]]  a count that is 3 at j = 2, else 2
+```
+
+Mathematica reads these the same way (`iC` gives a `Sequence`, and
+`Plus[67, Sequence[]]` is 67), checked with `wolframscript`. Only `+` may join
+such a `€`: `2*Sequence[10,10]` is `Times[2,10,10]`, not `2*(10+10)`, so a
+minus or a product is refused -- put the sign inside, `€(i,1,n)[-10]`.
+
 `IC` is an ASCII alias for `€`; both are accepted, as is `\[Euro]`. Deep-link an
 expression with `?ic=...` or a literal with `?set=...`.
 
@@ -118,8 +131,10 @@ opens: each ```` ```mathematica ```` block becomes a cell.
 `/Library/TeX/texbin`): the piece and its score, then level by level each cell
 written with € as the paper writes it, its Mathematica form for `iC` in
 `reference/SSSiCv102.wl`, the score with that level's blocks in their colours,
-and how far each level got. Tick which of those go in. The Mathematica form is
-checked against `wolframscript`: it evaluates to the same set.
+and how far each level got. At the end of each level, its cells can also be
+joined into one expression, checked against the piece. Tick which of those go
+in. The Mathematica form is checked against `wolframscript`: it evaluates to
+the same set.
 
 ## Notation
 
@@ -192,24 +207,33 @@ ratio is 0.047 (256 straight 16ths whose shape repeats), and among lossless
 encodings Für Elise does best under `interval`, which cuts its alphabet from 39
 distinct values to 26.
 
-## Scope: expansion, not compaction
+## Concatenating: the approaches
 
-The tool goes `€ form → set → score`. It does **not** try to derive a `€` form
-from a set; you write the form, and the tool shows you what it means and whether
-it matches the music.
+The **Concatenate** page goes the other way, `set → € form`. One set has many
+forms that expand back to it exactly, and which one a search returns depends on
+three choices. Each approach is named by them (`core/strategies.py`):
 
-`core/reduce.py` and `core/findseq.py` contain a working, verified-lossless port
-of `ReduceSetList` and a `FindSequenceFunction` equivalent. They are **parked**:
-nothing in the app imports them and no endpoint exposes them. They are kept
-because they work — on the corpus they reduce 9 of 12 encodings, and on Zelda's
-contour they find
+| | how a block is chosen | | how levels are built |
+|---|---|---|---|
+| G | greedy-shortest (ReduceSetList) | F | flat: the biggest block first, then inside it |
+| S | best-saving | U | up, level by level |
+| B | bar-anchored: bars are the parts | | |
+| V | variant-merging: repeats that differ by a piece line up | | |
 
-    {{8,0}, €49[€3[{8,-1}], {8,1}], €3[{8,-1}]}
+and by what `€` may do: E1 repeat and index, E2 a count that comes out 0 or 1
+(a switch), E3 a `€` inside a number, E4 a `€` inside a row. The approaches are
+G·F (`reduce.py`), S·F (`concat.py`), S·U (`levels.py`, as the Notebook uses
+it), B·U, S·U·E, V·U·E and B·V·U·E. Pick one from the menu, or press **Compare
+all**; the **Approaches** panel explains the labels and shows how each did on
+the whole corpus. Pieces from `scores/` load with their bar lines, which the B
+approaches need.
 
-200 rows to 4 — but the heuristics that decide *which* structure to prefer are
-an open problem, the same 70% the paper reports. Delete both files if you want
-them gone; `tests.py` guards only that they never return something that fails to
-expand back.
+```bash
+uv run python compare_strategies.py      # every approach on every set
+```
+
+writes `docs/strategies/results.json`, which the page reads. `findseq.py` is
+still parked.
 
 ## Known limits
 
@@ -231,7 +255,10 @@ core/setfile.py    .music.json transcriptions: load, check, save
 core/notebookfile.py  notebooks as Markdown, and as LaTeX for the PDF
 core/ic.py         IC model, parser, expander
 core/score.py      notes -> measures for the renderer
-core/reduce.py     PARKED: ReduceSetList port, not wired in
+core/strategies.py the named approaches to concatenating (G·F, S·F, S·U, B·U,
+                   S·U·E, V·U·E, B·V·U·E) and the measures they are compared by
+core/levels.py     the level-by-level search, with bars, gates and variants
+core/reduce.py     ReduceSetList port: approach G·F
 core/findseq.py    PARKED: FindSequenceFunction equivalent
 server/app.py      HTTP API
 web/               UI; VexFlow 4.2.2 vendored in web/vendor (MIT)

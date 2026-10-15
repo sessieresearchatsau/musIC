@@ -20,6 +20,15 @@ Both files are readings of `2026/music sheets/happy birthday.png`:
 | `happy-birthday-melody.music.json` | `pair` | the treble line — the one the IC machinery works on |
 | `happy-birthday-piano.music.json` | `triple` | both hands, chords included |
 
+Three more are written out by hand from the tunes as usually printed, for
+comparing approaches to concatenation (`compare_strategies.py`):
+
+| file | what it tests |
+|---|---|
+| `frere-jacques.music.json` | the control: every bar is played exactly twice |
+| `ode-to-joy-theme.music.json` | AA'BA': A and A' differ only in their last bar |
+| `happy-birthday-pickup.music.json` | bar lines when the piece starts on beat 3 |
+
 The top line of the second is identical to the first; `tests.py` checks it. Two
 readings of one picture agreeing is the strongest evidence a hand transcription
 offers.

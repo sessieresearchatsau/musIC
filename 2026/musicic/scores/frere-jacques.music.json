@@ -1,0 +1,57 @@
+{
+  "musicic": 1,
+  "name": "Frère Jacques",
+  "encoder": "pair",
+  "grid": 32,
+  "tempo": 120,
+  "numerator": 4,
+  "denominator": 4,
+  "key": "C",
+  "source": "the traditional round, first voice, written out by hand",
+  "transcription": {
+    "by": "Claude, from the tune as it is usually printed",
+    "covers": "one voice, all 8 bars, no round",
+    "notes": "The control case: every bar is played exactly twice, so every approach should find the same pairs. 2026/midis/frere-jacques.mid is the same tune in F, written in sixteenths, with gaps before the long notes."
+  },
+  "set": [
+    [32, 60],
+    [32, 62],
+    [32, 64],
+    [32, 60],
+
+    [32, 60],
+    [32, 62],
+    [32, 64],
+    [32, 60],
+
+    [32, 64],
+    [32, 65],
+    [64, 67],
+
+    [32, 64],
+    [32, 65],
+    [64, 67],
+
+    [16, 67],
+    [16, 69],
+    [16, 67],
+    [16, 65],
+    [32, 64],
+    [32, 60],
+
+    [16, 67],
+    [16, 69],
+    [16, 67],
+    [16, 65],
+    [32, 64],
+    [32, 60],
+
+    [32, 60],
+    [32, 55],
+    [64, 60],
+
+    [32, 60],
+    [32, 55],
+    [64, 60]
+  ]
+}

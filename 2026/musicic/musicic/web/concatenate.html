@@ -75,6 +75,7 @@ kbd{font:11px ui-monospace,Menlo,monospace;border:1px solid var(--line);border-b
 .verdict{padding:8px 12px;font-size:12.5px;border-top:1px solid var(--line)}
 .verdict.ok{background:var(--ok-soft);color:var(--ok)}
 .verdict.bad{background:var(--accent-soft);color:var(--accent)}
+.verdict.none{background:#fbf3dc;color:#7a5a12}
 
 .expr{margin:0;padding:12px;white-space:pre-wrap;word-break:break-word;
   font:12.5px/1.65 ui-monospace,SFMono-Regular,Menlo,monospace;max-height:340px;overflow:auto}
@@ -96,6 +97,62 @@ td.x{font:12px/1.55 ui-monospace,SFMono-Regular,Menlo,monospace;word-break:break
 .kind.repeat{background:#f3f1ec}
 .tablewrap{max-height:420px;overflow:auto}
 
+.levels{max-height:460px;overflow:auto}
+.lv{border-bottom:1px solid var(--line)}
+.lv:last-child{border-bottom:0}
+.lv h3{margin:0;padding:7px 12px;font-size:11px;font-weight:600;color:var(--dim);
+  text-transform:uppercase;letter-spacing:.06em;background:#fcfbf9;position:sticky;top:0}
+.lv h3 .sub{text-transform:none;letter-spacing:0;font-weight:400}
+.lv ol{list-style:none;margin:0;padding:0}
+.lv li{display:flex;gap:10px;padding:4px 12px;cursor:pointer;align-items:baseline}
+.lv li:hover,.lv li.sel{background:#fbf6e2}
+.lv li .w{flex:none;min-width:70px;color:var(--dim);font-variant-numeric:tabular-nums;font-size:12px}
+.lv li .x{font:12px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;word-break:break-word}
+.lv li.group .x{color:var(--accent)}
+
+.mapwrap{padding:10px 12px 6px;border-bottom:1px solid var(--line)}
+#map{display:block;width:100%;height:30px;border-radius:4px;background:#f3f1ec}
+.mapaxis{display:flex;justify-content:space-between;color:var(--dim);font-size:10.5px;
+  font-variant-numeric:tabular-nums;margin-top:2px}
+.legend{display:flex;gap:12px;flex-wrap:wrap;color:var(--dim);font-size:11px;margin-top:2px}
+.sw{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:4px;vertical-align:-1px}
+.sw.kept{background:#7fb38c}.sw.round{background:#d9d4cb}.sw.look{background:var(--mark)}
+.pick{padding:8px 12px;border-bottom:1px solid var(--line);font-size:12px;color:var(--dim);
+  min-height:2.2em;word-break:break-word}
+.pick .mono{color:var(--ink)}
+.tries{list-style:none;margin:0;padding:0;max-height:420px;overflow:auto;font-size:12px}
+.tries li{display:flex;gap:8px;align-items:baseline;padding:4px 12px;border-bottom:1px solid #f3f1ec;
+  cursor:pointer}
+.tries li:hover,.tries li.sel{background:#fbf6e2}
+.tries li.round{background:#fcfbf9;color:var(--dim);font-size:11px;text-transform:uppercase;
+  letter-spacing:.06em;cursor:default;position:sticky;top:0;z-index:1}
+.tries li.round:hover{background:#fcfbf9}
+.tries .st{flex:none;width:58px;font-size:10.5px;text-align:center;border-radius:9px;
+  border:1px solid var(--line);color:var(--dim);padding:0 4px}
+.tries .st.best{border-color:var(--accent);color:var(--accent);background:var(--accent-soft)}
+.tries .st.keep{border-color:var(--ok);color:#fff;background:var(--ok)}
+.tries .st.none{background:#f3f1ec}
+.tries .w{flex:none;font-variant-numeric:tabular-nums;color:var(--ink);min-width:82px}
+.tries .why{color:var(--dim);min-width:0}
+.tries .x{display:block;font:11.5px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--ink);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+#strategy{flex:1 1 180px}
+#approaches summary{list-style:none;cursor:pointer}
+#approaches summary::-webkit-details-marker{display:none}
+#approaches summary h2::after{content:"▸";margin-left:auto;color:var(--dim)}
+#approaches details[open] summary h2::after{content:"▾"}
+#approaches details[open] summary h2{border-bottom:1px solid var(--line)}
+#approaches summary h2{border-bottom:0}
+.essay{padding:4px 12px 12px;font-size:12.5px;line-height:1.6;max-height:70vh;overflow:auto}
+.essay h3{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--dim);margin:14px 0 6px}
+.essay table.axes td{vertical-align:top}
+.essay table.axes td.mono{white-space:nowrap;font-weight:600;color:var(--accent)}
+.essay table.axes th{background:transparent;padding-top:10px}
+#cmpRows tr{cursor:pointer}
+#cmpRows tr:hover,#cmpRows tr.sel{background:#fbf6e2}
+#cmpRows tr.best td:first-child{color:var(--ok);font-weight:600}
+td.code{white-space:nowrap;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
 .busy{display:inline-block;width:11px;height:11px;border:2px solid currentColor;
   border-right-color:transparent;border-radius:50%;animation:spin .8s linear infinite;
   vertical-align:-1px;margin-right:6px}
@@ -127,18 +184,36 @@ td.x{font:12px/1.55 ui-monospace,SFMono-Regular,Menlo,monospace;word-break:break
     <textarea id="input" spellcheck="false" autocomplete="off"
       placeholder="{{1, 1, 2}, {}, {1, 3}, {1, 1, 2}, {}, {1, 2}, {3, 4}, …}"></textarea>
     <div class="tools">
-      <select id="examples" aria-label="Load a reference set">
-        <option value="">Load a reference set…</option>
+      <select id="examples" aria-label="Load a reference set or a piece">
+        <option value="">Load a reference set or a piece…</option>
       </select>
+      <select id="strategy" aria-label="Approach"></select>
       <button id="clear">Clear</button>
+      <button id="compareAll" title="Run every approach on this set and compare them">Compare all</button>
       <button id="run" class="primary">Concatenate</button>
+      <span class="sub" id="barsNote"></span>
       <span class="sub">Paste rows as <span class="mono">{{1, 2}, {3}}</span> or
         <span class="mono">{1, 2}, {3}</span>. Notebook output with <span class="mono">\</span>
-        line breaks is fine. <kbd>⌘</kbd> <kbd>↵</kbd> runs it.</span>
+        line breaks is fine. <kbd>⌘</kbd> <kbd>↵</kbd> runs it. A piece from the menu
+        brings its bar lines, which the bar-by-bar approaches (B) need.</span>
     </div>
   </section>
 
   <div class="right">
+    <section class="panel" id="compare" hidden aria-labelledby="cmpHead">
+      <h2 id="cmpHead"><span>Approaches compared on this set</span>
+        <span class="sub" id="cmpNote"></span></h2>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>Approach</th><th>Rows</th><th>Numbers</th><th>Parts</th>
+            <th>Depth</th><th title="the € tools the result uses">€ tools</th>
+            <th title="share of blocks that stay inside a bar or run bar line to bar line">Bar fit</th>
+            <th>Time</th></tr></thead>
+          <tbody id="cmpRows"></tbody>
+        </table>
+      </div>
+    </section>
+
     <section class="panel" id="empty">
       <div class="empty">Paste a set and press <b>Concatenate</b>.<br>
         The result always expands back to exactly the rows you gave it.</div>
@@ -152,13 +227,19 @@ td.x{font:12px/1.55 ui-monospace,SFMono-Regular,Menlo,monospace;word-break:break
     <section class="panel" id="result" hidden aria-labelledby="resHead">
       <h2 id="resHead"><span>Indexed concatenation</span>
         <span class="act">
-          <span class="tabs" role="tablist">
+          <span class="sub" id="resWho"></span>
+          <span class="tabs" role="tablist" aria-label="Notation">
             <button role="tab" id="tabEuro" aria-selected="true">€ notation</button>
             <button role="tab" id="tabWl" aria-selected="false">Mathematica</button>
           </span>
           <button id="copy">Copy</button>
         </span></h2>
       <pre class="expr" id="expr"></pre>
+    </section>
+
+    <section class="panel" id="levels" hidden aria-labelledby="levelsHead">
+      <h2 id="levelsHead"><span>Levels</span><span class="sub" id="levelsNote"></span></h2>
+      <div class="levels" id="levelList"></div>
     </section>
 
     <section class="panel" id="parts" hidden aria-labelledby="partsHead">
@@ -169,6 +250,93 @@ td.x{font:12px/1.55 ui-monospace,SFMono-Regular,Menlo,monospace;word-break:break
           <tbody id="partRows"></tbody>
         </table>
       </div>
+    </section>
+
+    <section class="panel" id="approaches" aria-labelledby="apHead">
+      <details id="apDetails">
+        <summary><h2 id="apHead"><span>Approaches to concatenating a long set</span>
+          <span class="sub">what the labels mean · results on the corpus</span></h2></summary>
+        <div class="essay">
+          <p>One set has many indexed concatenations that expand back to it exactly.
+            Which one a search returns comes down to three choices, and each approach is
+            named by them: <b>how a block is chosen</b> · <b>how levels are built</b> ·
+            <b>what € may do</b>.</p>
+          <table class="axes">
+            <tr><th colspan="2">How a block is chosen</th></tr>
+            <tr><td class="mono">G</td><td><b>Greedy-shortest.</b> The shortest repeating
+              pattern is fixed first and never revisited (ReduceSetList). A small block can
+              stop a bigger one from being found.</td></tr>
+            <tr><td class="mono">S</td><td><b>Best-saving.</b> Every candidate is scored and
+              the one that saves the most wins.</td></tr>
+            <tr><td class="mono">B</td><td><b>Bar-anchored.</b> No piece crosses a bar line,
+              and each bar is one part (a € of one copy, which is the bar itself:
+              <span class="mono">€(i,0,0)[x] = x</span>), so the levels above group whole
+              bars, then phrases.</td></tr>
+            <tr><td class="mono">V</td><td><b>Variant-merging.</b> Repeats that differ by a
+              piece still line up; where the piece is absent its count is 0.</td></tr>
+            <tr><th colspan="2">How levels are built</th></tr>
+            <tr><td class="mono">F</td><td><b>Flat, then nested.</b> The biggest block in the
+              raw rows first, then the search goes inside its body.</td></tr>
+            <tr><td class="mono">U</td><td><b>Up, level by level.</b> Short pieces, then groups
+              of pieces, then groups of those.</td></tr>
+            <tr><th colspan="2">What € may do</th></tr>
+            <tr><td class="mono">E1</td><td>Repeat and index, with polynomial formulas:
+              <span class="mono">€(i,0,1)[{69-2i, 32}]</span>.</td></tr>
+            <tr><td class="mono">E2</td><td>A count that comes out 0 or 1 in some repeats,
+              switching a piece off or writing it once:
+              <span class="mono">€(i,0,2-3j)</span> is 3 rows at j = 0 and none at j = 1.</td></tr>
+            <tr><td class="mono">E3</td><td>A € inside a number, as a term of a sum. It adds
+              what it expands to, and nothing when it is empty:
+              <span class="mono">€(n,0,3)[67 + €(n-2)[10]]</span> is 67, 67, 67, 77 &mdash;
+              the first note of each phrase of Happy Birthday, without the cubic
+              <span class="mono">67 + 10n(n-1)(n-2)/6</span>. Mathematica agrees:
+              <span class="mono">Plus[67, Sequence[]]</span> is 67. Only + may join it.</td></tr>
+            <tr><td class="mono">E4</td><td>A € inside a row: <span class="mono">{1, €(3)[3]}</span>
+              is <span class="mono">{1, 3, 3, 3}</span>.</td></tr>
+          </table>
+          <p>The gates of E2 and E3 come in three kinds, each a € whose count is a formula
+            in the repeat's index j: a <b>step</b> <span class="mono">€(j-2)[d]</span> adds d
+            once j passes 2; a <b>one-off</b> <span class="mono">€(1-(j-2)^2)[d]</span> adds d
+            at j = 2 only; and an <b>alternation</b> <span class="mono">(-1)^j</span>. The
+            approaches with E weigh a number that changes between repeats at a tenth of a
+            part (S·U weighs it at 0.4), since otherwise a gate is never worth its numbers.</p>
+          <h3>The approaches</h3>
+          <div class="tablewrap"><table>
+            <thead><tr><th>Code</th><th>Name</th><th>What it does</th></tr></thead>
+            <tbody id="apRows"></tbody>
+          </table></div>
+          <h3>On the corpus <span class="sub" id="corpusNote"></span></h3>
+          <p class="sub">Every approach on every set: the Happy Birthday transcriptions and
+            the MIDI the old experiments were made from, through several encoders, the
+            reference sets, and the networks of the ICN paper. <b>Smallest</b> counts the sets
+            where an approach writes the fewest rows (ties shared), then the fewest numbers.
+            Ratios are medians over the sets it finished, rows written against rows in the
+            set. Run <span class="mono">uv run python compare_strategies.py</span> to
+            refresh.</p>
+          <div class="tablewrap"><table>
+            <thead><tr><th>Code</th><th>Finished</th><th>Lossless</th><th>Smallest</th>
+              <th>Rows ratio</th><th>Numbers ratio</th><th>Median time</th></tr></thead>
+            <tbody id="corpusRows"></tbody>
+          </table></div>
+        </div>
+      </details>
+    </section>
+
+    <section class="panel" id="trace" hidden aria-labelledby="traceHead">
+      <h2 id="traceHead"><span>Attempts</span>
+        <span class="act"><span class="sub" id="traceNote"></span>
+          <button id="stop" hidden>Stop</button></span></h2>
+      <div class="mapwrap">
+        <canvas id="map" height="30" aria-label="Where in the rows each attempt looks"></canvas>
+        <div class="mapaxis"><span>1</span><span id="mapEnd"></span></div>
+        <div class="legend">
+          <span><i class="sw kept"></i>kept</span>
+          <span><i class="sw round"></i>being searched</span>
+          <span><i class="sw look"></i>this attempt</span>
+        </div>
+      </div>
+      <div class="pick" id="pick">Click an attempt to see its rows.</div>
+      <ol class="tries" id="tries" aria-live="off"></ol>
     </section>
   </div>
 </main>

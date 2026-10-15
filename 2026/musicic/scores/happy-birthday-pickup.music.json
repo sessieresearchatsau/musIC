@@ -1,0 +1,52 @@
+{
+  "musicic": 1,
+  "name": "Happy Birthday to You — with its pickup",
+  "encoder": "pair",
+  "grid": 32,
+  "tempo": 120,
+  "numerator": 3,
+  "denominator": 4,
+  "key": "C",
+  "source": "the tune as it is usually printed, starting on beat 3",
+  "transcription": {
+    "by": "Claude, from the common version",
+    "covers": "melody, pickup and 8 bars",
+    "notes": "The pickup is a leading rest of a half note, then a dotted eighth and a sixteenth on beat 3, so every bar is 96 units and the last bar keeps only its half note. Compare happy-birthday-melody.music.json, which starts on beat 1 with two eighths."
+  },
+  "set": [
+    [64, 0],
+    [24, 67],
+    [8, 67],
+
+    [32, 69],
+    [32, 67],
+    [32, 72],
+
+    [64, 71],
+    [24, 67],
+    [8, 67],
+
+    [32, 69],
+    [32, 67],
+    [32, 74],
+
+    [64, 72],
+    [24, 67],
+    [8, 67],
+
+    [32, 79],
+    [32, 76],
+    [32, 72],
+
+    [32, 71],
+    [32, 69],
+    [24, 77],
+    [8, 77],
+
+    [32, 76],
+    [32, 72],
+    [32, 74],
+
+    [64, 72]
+  ]
+}

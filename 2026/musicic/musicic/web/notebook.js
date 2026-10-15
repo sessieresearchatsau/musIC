@@ -1322,7 +1322,7 @@ const EXPORT_PREFS = "musicic.notebook.export";
 
 function exportChoices(read) {
   const form = $("#exportDlg form");
-  const names = ["math", "score", "items", "code"];
+  const names = ["math", "score", "items", "together", "reasoning", "code"];
   if (read) {
     const o = Object.fromEntries(names.map((n) => [n, form.elements[n].checked]));
     try { localStorage.setItem(EXPORT_PREFS, JSON.stringify(o)); } catch {}
@@ -1330,7 +1330,7 @@ function exportChoices(read) {
   }
   let o = null;
   try { o = JSON.parse(localStorage.getItem(EXPORT_PREFS) || "null"); } catch {}
-  if (o) for (const n of names) form.elements[n].checked = !!o[n];
+  if (o) for (const n of names) if (n in o) form.elements[n].checked = !!o[n];
 }
 
 function openExport() {

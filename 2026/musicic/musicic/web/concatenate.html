@@ -138,6 +138,17 @@ td.x{font:12px/1.55 ui-monospace,SFMono-Regular,Menlo,monospace;word-break:break
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
 #strategy{flex:1 1 180px}
+dialog{border:1px solid var(--line);border-radius:10px;padding:18px 20px;max-width:440px;
+  box-shadow:0 12px 40px rgba(0,0,0,.18);color:var(--ink)}
+dialog::backdrop{background:rgba(30,25,20,.28)}
+dialog h3{margin:0 0 4px;font:600 18px var(--serif)}
+dialog .hint{color:var(--dim);font-size:12px;margin:0 0 12px}
+dialog label{display:block;margin:0 0 10px;font-size:13px;cursor:pointer}
+dialog label small{display:block;color:var(--dim);font-size:11.5px;margin-left:22px}
+dialog label.field input{display:block;width:100%;margin-top:3px;font:inherit;padding:5px 8px;
+  border:1px solid var(--line);border-radius:5px}
+dialog label:has(input:disabled){opacity:.5;cursor:default}
+dialog menu{display:flex;justify-content:flex-end;gap:8px;margin:16px 0 0;padding:0}
 #approaches summary{list-style:none;cursor:pointer}
 #approaches summary::-webkit-details-marker{display:none}
 #approaches summary h2::after{content:"▸";margin-left:auto;color:var(--dim)}
@@ -233,6 +244,7 @@ td.code{white-space:nowrap;font-family:ui-monospace,SFMono-Regular,Menlo,monospa
             <button role="tab" id="tabWl" aria-selected="false">Mathematica</button>
           </span>
           <button id="copy">Copy</button>
+          <button id="exportBtn" title="Typeset the set and its concatenation as a PDF">Export PDF…</button>
         </span></h2>
       <pre class="expr" id="expr"></pre>
     </section>
@@ -340,6 +352,35 @@ td.code{white-space:nowrap;font-family:ui-monospace,SFMono-Regular,Menlo,monospa
     </section>
   </div>
 </main>
+
+<dialog id="exportDlg" aria-labelledby="exportTitle">
+  <form method="dialog">
+    <h3 id="exportTitle">Export as PDF</h3>
+    <p class="hint">Typeset with LaTeX: the set, then how it was concatenated. Every expression
+      is expanded again before it goes in. Choose what goes in.</p>
+    <label class="field">Title <input name="title" type="text" autocomplete="off"></label>
+    <label><input type="checkbox" name="set" checked> The set
+      <small>its rows, eight to a line (a long set shows its first and last 200)</small></label>
+    <label><input type="checkbox" name="approach" checked> The approach
+      <small>what it does, and what its label says about it</small></label>
+    <label><input type="checkbox" name="math" checked> The concatenation as math
+      <small>€ with its index below and last value above, each block in its colour</small></label>
+    <label><input type="checkbox" name="code" checked> Mathematica code
+      <small>iC[…] from SSSiCv102.wl, ready to evaluate</small></label>
+    <label><input type="checkbox" name="measures" checked> Measures
+      <small>rows and numbers written, parts, depth, € tools, and that it expands back</small></label>
+    <label><input type="checkbox" name="structure"> Structure
+      <small>the rows each top-level part covers</small></label>
+    <label><input type="checkbox" name="levels" checked> Levels
+      <small>for a level-by-level approach: the parts of every level</small></label>
+    <label><input type="checkbox" name="compare" checked> All approaches compared
+      <small>after Compare all: a table of every approach, then each one in turn</small></label>
+    <menu>
+      <button value="cancel" formnovalidate>Cancel</button>
+      <button value="ok" class="primary">Export PDF</button>
+    </menu>
+  </form>
+</dialog>
 
 <script src="/static/shared.js"></script>
 <script src="/static/concatenate.js"></script>

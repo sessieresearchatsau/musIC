@@ -21,6 +21,7 @@ from ..core import concat as CONCAT
 from ..core import ic as ICmod
 from ..core import levels as LEVELS
 from ..core import notebookfile as NBF
+from ..core import concatexport as CEXP
 from ..core import strategies as STRATS
 from ..core.metrics import measure
 from ..core.keysig import Key
@@ -663,36 +664,65 @@ class ExportReq(BaseModel):
     images: dict = {}          # key -> PNG data URL, drawn by the browser
 
 
+def _typeset(tex_text: str, fname: str, files: dict[str, bytes] | None = None) -> Response:
+    """Run xelatex on tex_text (with any files written beside it) and hand
+    back the PDF as a download called fname."""
+    import shutil
+    import subprocess
+    import tempfile
+    engine = shutil.which("xelatex") or "/Library/TeX/texbin/xelatex"
+    with tempfile.TemporaryDirectory() as tmp:
+        for name, data in (files or {}).items():
+            (Path(tmp) / name).write_bytes(data)
+        (Path(tmp) / "doc.tex").write_text(tex_text, encoding="utf-8")
+        run = subprocess.run([engine, "-interaction=nonstopmode", "-halt-on-error", "doc.tex"],
+                             cwd=tmp, capture_output=True, text=True, timeout=120)
+        pdf = Path(tmp) / "doc.pdf"
+        if run.returncode != 0 or not pdf.is_file():
+            log = run.stdout[-1500:]
+            errs = [l for l in log.splitlines() if l.startswith("!")]
+            raise RuntimeError("LaTeX could not typeset it: " + (" ".join(errs) or log[-400:]))
+        return Response(pdf.read_bytes(), media_type="application/pdf",
+                        headers={"Content-Disposition": f'attachment; filename="{fname}"'})
+
+
 @app.post("/api/export/pdf")
 def export_pdf(req: ExportReq):
     """Typeset the notebook with xelatex and hand back the PDF."""
     import base64
-    import shutil
-    import subprocess
-    import tempfile
     try:
-        engine = shutil.which("xelatex") or "/Library/TeX/texbin/xelatex"
-        with tempfile.TemporaryDirectory() as tmp:
-            names = {}
-            for key, url in (req.images or {}).items():
-                if not re.fullmatch(r"piece|L\d+", key) or "," not in str(url):
-                    continue
-                (Path(tmp) / f"{key}.png").write_bytes(base64.b64decode(url.split(",", 1)[1]))
-                names[key] = f"{key}.png"
-            (Path(tmp) / "notebook.tex").write_text(
-                NBF.to_latex(req.book, req.options or {}, names), encoding="utf-8")
-            run = subprocess.run([engine, "-interaction=nonstopmode", "-halt-on-error",
-                                  "notebook.tex"], cwd=tmp, capture_output=True, text=True,
-                                 timeout=120)
-            pdf = Path(tmp) / "notebook.pdf"
-            if run.returncode != 0 or not pdf.is_file():
-                log = run.stdout[-1500:]
-                errs = [l for l in log.splitlines() if l.startswith("!")]
-                raise RuntimeError("LaTeX could not typeset the notebook: "
-                                   + (" ".join(errs) or log[-400:]))
-            fname = NBF.slug(req.book.get("name") or "notebook") + ".pdf"
-            return Response(pdf.read_bytes(), media_type="application/pdf",
-                            headers={"Content-Disposition": f'attachment; filename="{fname}"'})
+        files, names = {}, {}
+        for key, url in (req.images or {}).items():
+            if not re.fullmatch(r"piece|L\d+", key) or "," not in str(url):
+                continue
+            files[f"{key}.png"] = base64.b64decode(url.split(",", 1)[1])
+            names[key] = f"{key}.png"
+        return _typeset(NBF.to_latex(req.book, req.options or {}, names),
+                        NBF.slug(req.book.get("name") or "notebook") + ".pdf", files)
+    except Exception as exc:                       # noqa: BLE001
+        traceback.print_exc()
+        return _err(exc)
+
+
+class ConcatExportReq(BaseModel):
+    name: str = "Concatenation"
+    text: str                          # the set, as the page holds it
+    result: dict | None = None         # the approach on show
+    compared: list[dict] | None = None  # every approach, after Compare all
+    options: dict = {}
+
+
+@app.post("/api/export/concatenate")
+def export_concatenate(req: ConcatExportReq):
+    """Typeset the Concatenate page's set and result (or comparison) as a PDF."""
+    try:
+        rows = _concat_rows(req.text)
+        if not req.result and not req.compared:
+            raise ValueError("concatenate the set first, then export")
+        tex_text = CEXP.to_latex(req.name or "Concatenation", rows, req.result,
+                                 req.compared if (req.options or {}).get("compare") else None,
+                                 req.options or {})
+        return _typeset(tex_text, NBF.slug(req.name or "concatenation") + ".pdf")
     except Exception as exc:                       # noqa: BLE001
         traceback.print_exc()
         return _err(exc)

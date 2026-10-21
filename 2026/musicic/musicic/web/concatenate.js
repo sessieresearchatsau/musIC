@@ -42,6 +42,10 @@ const fmt = (n) => Number(n).toLocaleString();
   $("#tabEuro").onclick = () => showForm("euro");
   $("#tabWl").onclick = () => showForm("wl");
   $("#copy").onclick = copyResult;
+  $("#exportBtn").onclick = openExport;
+  $("#exportDlg").addEventListener("close", () => {
+    if ($("#exportDlg").returnValue === "ok") exportPdf(exportChoices(true));
+  });
 
   try {
     const j = await fetch("/api/concatenate/strategies").then((r) => r.json());
@@ -566,4 +570,68 @@ async function copyResult() {
     const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r);
     status("selected — press ⌘C to copy");
   }
+}
+
+/* ---------------------------------------------------------------- export */
+/* As the Notebook does it: a dialog of what goes in, remembered between
+   visits, then the server typesets it with xelatex and the PDF downloads. */
+const EXPORT_PREFS = "musicic.concatenate.export";
+const EXPORT_PARTS = ["set", "approach", "math", "code", "measures", "structure", "levels", "compare"];
+
+function exportChoices(read) {
+  const form = $("#exportDlg form");
+  if (read) {
+    const o = Object.fromEntries(EXPORT_PARTS.map((n) => [n, form.elements[n].checked]));
+    try { localStorage.setItem(EXPORT_PREFS, JSON.stringify(o)); } catch {}
+    o.title = form.elements.title.value.trim();
+    return o;
+  }
+  let o = null;
+  try { o = JSON.parse(localStorage.getItem(EXPORT_PREFS) || "null"); } catch {}
+  if (o) for (const n of EXPORT_PARTS) if (n in o) form.elements[n].checked = !!o[n];
+}
+
+const compared = () => C.compared.filter((x) => !x.skipped);
+
+function openExport() {
+  if (!C.res) { status("concatenate the set first, then export", true); return; }
+  exportChoices(false);
+  const f = $("#exportDlg form").elements;
+  if (!f.title.value) f.title.value = (C.example && C.example.title) || "Concatenation";
+  // Only what this result has can go in.
+  const has = { levels: !!(C.res.levels && C.res.levels.length), compare: compared().length > 1 };
+  for (const [n, ok] of Object.entries(has)) {
+    f[n].disabled = !ok;
+    f[n].parentElement.title = ok ? "" : n === "compare"
+      ? "Press Compare all first" : "This approach does not build levels";
+  }
+  $("#exportDlg").showModal();
+}
+
+async function exportPdf(opts) {
+  const text = $("#input").value.trim();
+  const f = $("#exportDlg form").elements;
+  const options = Object.fromEntries(EXPORT_PARTS.map((n) => [n, opts[n] && !f[n].disabled]));
+  const name = opts.title || "Concatenation";
+  // a result travels without what the PDF does not use
+  const slim = (r) => ({ code: r.code, name: r.name, text: r.text, measures: r.measures,
+    seconds: r.seconds, levels: r.levels, skipped: r.skipped });
+  status("typesetting…");
+  try {
+    const r = await fetch("/api/export/concatenate", { method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, text, options, result: slim(C.res),
+        compared: options.compare ? C.compared.map(slim) : null }) });
+    if (!r.ok || !(r.headers.get("content-type") || "").includes("pdf")) {
+      const j = await r.json().catch(() => ({}));
+      throw new Error(j.error || `${r.status} ${r.statusText}`);
+    }
+    const blob = await r.blob();
+    const a = el("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = name.replace(/[^\w\s-]/g, "").trim().replace(/\s+/g, "-") + ".pdf";
+    document.body.append(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 30000);
+    status(`exported ${a.download}`);
+  } catch (err) { status("could not export: " + err.message, true); }
 }

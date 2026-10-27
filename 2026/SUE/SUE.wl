@@ -55,6 +55,10 @@
    meant for sets of a few hundred rows.
    ============================================================================ *)
 
+(* The contexts the user works in, so that the index names below are the
+   very symbols they type (i, j, k, ...), whatever packages are loaded. *)
+SUE`$userContextPath = $ContextPath;
+
 BeginPackage["SUE`"]
 
 SUEConcatenate::usage = "SUEConcatenate[rows] concatenates a list of rows of \
@@ -72,15 +76,31 @@ that gives nothing adds 0 and the number never vanishes.";
 
 Begin["`Private`"]
 
+(* Loading the file again in the same session starts clean. *)
+ClearAll[SUEConcatenate, SUEExpand, gateSum];
+ClearAll["SUE`Private`*"];
+
 (* The index names: i inside a level-1 piece, then j at level 2, k at
-   level 3, ... They live in Global` so that results read j, not SUE`j. *)
-$vars = Symbol["Global`" <> #] & /@ Characters["ijklmnpqrs"];
+   level 3, ... Each is the symbol the user gets by typing it, so results
+   read j, not Global`j or SUE`Private`j; one that holds a value is not
+   used, and Global`j is used instead. *)
+$vars = Block[{$ContextPath = SUE`$userContextPath, $Context = "Global`"},
+  If[ValueQ[#], Symbol["Global`" <> SymbolName[#]], #] & /@ (Symbol /@ Characters["ijklmnpqrs"])];
 vI = First[$vars];
 
 (* The head results are written with: SSSiCv102.wl's own symbol, so that its
    euro-sign display and its ExpandAll apply. Without that package loaded
    it is an inert symbol, and SUEExpand expands it alone. *)
 IC = SSSiCv102`IndexedConcatenate;
+
+(* Without SSSiCv102.wl a result still displays with the euro sign: the
+   index and its first value below, the last value above, or a count above.
+   SSSiCv102.wl, when loaded, clears these and puts its own in their place. *)
+If[FormatValues[SSSiCv102`IndexedConcatenate] === {},
+  Format[SSSiCv102`IndexedConcatenate[x___, {v_, a_, b_}]] :=
+    Row[{Underoverscript["\[Euro]", Row[{v, "=", a}], b], "[", Row[{x}, ","], "]"}];
+  Format[SSSiCv102`IndexedConcatenate[x___, n_]] :=
+    Row[{Overscript["\[Euro]", n], "[", Row[{x}, ","], "]"}]];
 
 
 (* ============================================================================
@@ -425,7 +445,9 @@ num[x_] := Module[{r = e3[x]},
 (* gateSum adds up once nothing is left to expand: no IndexedConcatenate,
    and no iC or icEval still waiting for an outer index. *)
 gateSum[x___] /; FreeQ[{x}, _IC | _icEval | _SSSiCv102`iC] := Plus[x];
-Format[gateSum[x___]] := HoldForm[Plus[x]];
+(* displayed as the plain sum; MakeBoxes never evaluates its left side, so
+   the rule above cannot rewrite it *)
+MakeBoxes[gateSum[x___], fmt_] := MakeBoxes[HoldForm[Plus[x]], fmt];
 
 (* treeOf[x]: a part written the simplest way that says what it is. *)
 treeOf[x_] := Module[{uses},
